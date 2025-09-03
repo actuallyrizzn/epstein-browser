@@ -1,44 +1,87 @@
 {% extends "base.html" %}
 
-{% block title %}Dashboard - Epstein Documents OCR Progress{% endblock %}
+{% block title %}Home - Epstein Documents Browser{% endblock %}
 
 {% block content %}
 <div class="row">
     <div class="col-12">
         <h1 class="mb-4">
-            <i class="fas fa-tachometer-alt me-2"></i>
-            OCR Processing Dashboard
+            <i class="fas fa-file-alt me-2"></i>
+            Epstein Documents Browser
         </h1>
+    </div>
+</div>
+
+{% if total_images > 0 %}
+<!-- Quick Start -->
+<div class="row mb-4">
+    <div class="col-12">
+        <div class="card bg-primary text-white">
+            <div class="card-body text-center">
+                <h5 class="card-title mb-3">
+                    <i class="fas fa-play me-2"></i>
+                    Start Browsing Documents
+                </h5>
+                <p class="card-text mb-3">
+                    Browse through {{ "{:,}".format(total_images) }} congressional documents with Archive.org-style navigation
+                </p>
+                <a href="{{ url_for('view_image', image_id=1) }}" class="btn btn-light btn-lg">
+                    <i class="fas fa-book-open me-2"></i>
+                    Start Reading
+                </a>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Statistics -->
+<div class="row mb-4">
+    <div class="col-md-4">
+        <div class="stats-card">
+            <div class="stat-number" id="total-images">{{ "{:,}".format(total_images) }}</div>
+            <div class="text-muted">Total Documents</div>
+        </div>
+    </div>
+    <div class="col-md-4">
+        <div class="stats-card">
+            <div class="stat-number" id="ocr-count">Loading...</div>
+            <div class="text-muted">With OCR Text</div>
+        </div>
+    </div>
+    <div class="col-md-4">
+        <div class="stats-card">
+            <div class="stat-number" id="ocr-percentage">Loading...</div>
+            <div class="text-muted">OCR Progress</div>
+        </div>
     </div>
 </div>
 
 <!-- Quick Navigation -->
 <div class="row mb-4">
     <div class="col-12">
-        <div class="card bg-primary text-white">
-            <div class="card-body text-center">
-                <h5 class="card-title mb-3">
-                    <i class="fas fa-compass me-2"></i>
-                    Quick Navigation
-                </h5>
+        <div class="card">
+            <div class="card-body">
+                <h5><i class="fas fa-compass me-2"></i>Quick Navigation</h5>
                 <div class="row">
-                    <div class="col-md-4 mb-2">
-                        <a href="{{ url_for('browse') }}" class="btn btn-light btn-lg w-100">
-                            <i class="fas fa-folder-open me-2"></i>
-                            Browse Documents
+                    <div class="col-md-3 mb-2">
+                        <a href="{{ url_for('view_image', image_id=1) }}" class="btn btn-outline-primary w-100">
+                            <i class="fas fa-angle-double-left me-2"></i>First Document
                         </a>
                     </div>
-                    <div class="col-md-4 mb-2">
-                        <a href="{{ url_for('browse', volume='VOL00001') }}" class="btn btn-light btn-lg w-100">
-                            <i class="fas fa-book me-2"></i>
-                            Volume 1
+                    <div class="col-md-3 mb-2">
+                        <a href="{{ url_for('view_image', image_id=total_images//2) }}" class="btn btn-outline-primary w-100">
+                            <i class="fas fa-equals me-2"></i>Middle
                         </a>
                     </div>
-                    <div class="col-md-4 mb-2">
-                        <a href="{{ url_for('search') }}" class="btn btn-light btn-lg w-100">
-                            <i class="fas fa-search me-2"></i>
-                            Search Text
+                    <div class="col-md-3 mb-2">
+                        <a href="{{ url_for('view_image', image_id=total_images) }}" class="btn btn-outline-primary w-100">
+                            <i class="fas fa-angle-double-right me-2"></i>Last Document
                         </a>
+                    </div>
+                    <div class="col-md-3 mb-2">
+                        <button class="btn btn-outline-secondary w-100" onclick="randomDocument()">
+                            <i class="fas fa-random me-2"></i>Random
+                        </button>
                     </div>
                 </div>
             </div>
@@ -46,277 +89,116 @@
     </div>
 </div>
 
-<!-- Overall Progress -->
+<!-- Search -->
 <div class="row mb-4">
     <div class="col-12">
         <div class="card">
-            <div class="card-header">
-                <h5 class="mb-0">
-                    <i class="fas fa-chart-line me-2"></i>
-                    Overall Progress
-                </h5>
-            </div>
             <div class="card-body">
-                <div class="progress mb-3" style="height: 30px;">
-                    <div id="overall-progress" class="progress-bar progress-bar-striped progress-bar-animated bg-success" 
-                         role="progressbar" style="width: {{ (stats.processed_count / stats.total_files * 100) if stats.total_files > 0 else 0 }}%">
-                        {{ "%.1f"|format((stats.processed_count / stats.total_files * 100) if stats.total_files > 0 else 0) }}%
-                    </div>
+                <h5><i class="fas fa-search me-2"></i>Search Documents</h5>
+                <div class="input-group">
+                    <input type="text" class="form-control" id="search-input" placeholder="Search by filename...">
+                    <button class="btn btn-primary" onclick="searchDocuments()">
+                        <i class="fas fa-search me-1"></i>Search
+                    </button>
                 </div>
-                <div class="row text-center">
-                    <div class="col-md-3">
-                        <strong id="processed-count">{{ stats.processed_count|default(0) }}</strong><br>
-                        <small class="text-muted">Processed</small>
-                    </div>
-                    <div class="col-md-3">
-                        <strong id="total-count">{{ stats.total_files|default(0) }}</strong><br>
-                        <small class="text-muted">Total Files</small>
-                    </div>
-                    <div class="col-md-3">
-                        <strong id="error-count">{{ stats.error_count|default(0) }}</strong><br>
-                        <small class="text-muted">Errors</small>
-                    </div>
-                    <div class="col-md-3">
-                        <strong>{{ eta }}</strong><br>
-                        <small class="text-muted">ETA</small>
-                    </div>
-                </div>
+                <div id="search-results" class="mt-3"></div>
             </div>
         </div>
     </div>
 </div>
 
-<!-- Statistics Cards -->
-<div class="row mb-4">
-    <div class="col-md-3 mb-3">
-        <div class="card stats-card h-100">
-            <div class="card-body text-center">
-                <i class="fas fa-file-alt fa-2x text-primary mb-2"></i>
-                <h4 class="card-title">{{ stats.total_files|default(0) }}</h4>
-                <p class="card-text text-muted">Total Documents</p>
-            </div>
-        </div>
-    </div>
-    
-    <div class="col-md-3 mb-3">
-        <div class="card stats-card h-100">
-            <div class="card-body text-center">
-                <i class="fas fa-check-circle fa-2x text-success mb-2"></i>
-                <h4 class="card-title">{{ stats.processed_count|default(0) }}</h4>
-                <p class="card-text text-muted">Completed</p>
-            </div>
-        </div>
-    </div>
-    
-    <div class="col-md-3 mb-3">
-        <div class="card stats-card h-100">
-            <div class="card-body text-center">
-                <i class="fas fa-clock fa-2x text-warning mb-2"></i>
-                <h4 class="card-title">{{ (stats.total_files - stats.processed_count)|default(0) }}</h4>
-                <p class="card-text text-muted">Pending</p>
-            </div>
-        </div>
-    </div>
-    
-    <div class="col-md-3 mb-3">
-        <div class="card stats-card h-100">
-            <div class="card-body text-center">
-                <i class="fas fa-exclamation-triangle fa-2x text-danger mb-2"></i>
-                <h4 class="card-title">{{ stats.error_count|default(0) }}</h4>
-                <p class="card-text text-muted">Errors</p>
-            </div>
-        </div>
-    </div>
-</div>
-
-<!-- Performance Metrics -->
-<div class="row mb-4">
-    <div class="col-md-6">
-        <div class="card">
-            <div class="card-header">
-                <h5 class="mb-0">
-                    <i class="fas fa-stopwatch me-2"></i>
-                    Performance Metrics
-                </h5>
-            </div>
-            <div class="card-body">
-                <div class="row">
-                    <div class="col-6">
-                        <strong>Avg Processing Time:</strong><br>
-                        <span class="text-primary">{{ "%.2f"|format(stats.avg_processing_time|default(0)) }}s</span>
-                    </div>
-                    <div class="col-6">
-                        <strong>Min Processing Time:</strong><br>
-                        <span class="text-success">{{ "%.2f"|format(stats.min_processing_time|default(0)) }}s</span>
-                    </div>
-                </div>
-                <hr>
-                <div class="row">
-                    <div class="col-6">
-                        <strong>Max Processing Time:</strong><br>
-                        <span class="text-warning">{{ "%.2f"|format(stats.max_processing_time|default(0)) }}s</span>
-                    </div>
-                    <div class="col-6">
-                        <strong>Completion Rate:</strong><br>
-                        <span class="text-info">{{ "%.1f"|format(stats.completion_percentage|default(0)) }}%</span>
-                    </div>
-                </div>
-            </div>
-        </div>
-    </div>
-    
-    <div class="col-md-6">
-        <div class="card">
-            <div class="card-header">
-                <h5 class="mb-0">
-                    <i class="fas fa-info-circle me-2"></i>
-                    System Information
-                </h5>
-            </div>
-            <div class="card-body">
-                <div class="row">
-                    <div class="col-12">
-                        <strong>Processing Status:</strong><br>
-                        {% if stats.processed_count > 0 %}
-                            <span class="badge bg-success">Active</span>
-                        {% else %}
-                            <span class="badge bg-secondary">Not Started</span>
-                        {% endif %}
-                    </div>
-                </div>
-                <hr>
-                <div class="row">
-                    <div class="col-12">
-                        <strong>Last Updated:</strong><br>
-                        <span class="text-muted" id="last-updated">{{ current_time }}</span>
-                    </div>
-                </div>
-                <hr>
-                <div class="row">
-                    <div class="col-12">
-                        <strong>Estimated Completion:</strong><br>
-                        <span class="text-primary">{{ eta }}</span>
-                    </div>
-                </div>
-            </div>
-        </div>
-    </div>
-</div>
-
-<!-- Recent Activity -->
+<!-- How to Use -->
 <div class="row">
     <div class="col-12">
         <div class="card">
-            <div class="card-header d-flex justify-content-between align-items-center">
-                <h5 class="mb-0">
-                    <i class="fas fa-history me-2"></i>
-                    Recent Activity
-                </h5>
-                <a href="{{ url_for('browse') }}" class="btn btn-sm btn-outline-primary">
-                    View All
-                </a>
-            </div>
             <div class="card-body">
-                {% if recent_activity %}
-                    <div class="table-responsive">
-                        <table class="table table-sm">
-                            <thead>
-                                <tr>
-                                    <th>File</th>
-                                    <th>Status</th>
-                                    <th>Processing Time</th>
-                                    <th>Timestamp</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                {% for activity in recent_activity %}
-                                <tr>
-                                    <td>
-                                        <small class="text-muted">{{ activity.file_name }}</small>
-                                    </td>
-                                    <td>
-                                        {% if activity.status == 'completed' %}
-                                            <span class="badge bg-success status-badge">Completed</span>
-                                        {% elif activity.status == 'failed' %}
-                                            <span class="badge bg-danger status-badge">Failed</span>
-                                        {% else %}
-                                            <span class="badge bg-warning status-badge">{{ activity.status|title }}</span>
-                                        {% endif %}
-                                    </td>
-                                    <td>
-                                        {% if activity.processing_time %}
-                                            <small>{{ "%.2f"|format(activity.processing_time) }}s</small>
-                                        {% else %}
-                                            <small class="text-muted">-</small>
-                                        {% endif %}
-                                    </td>
-                                    <td>
-                                        <small class="text-muted">{{ activity.created_at }}</small>
-                                    </td>
-                                </tr>
-                                {% endfor %}
-                            </tbody>
-                        </table>
-                    </div>
-                {% else %}
-                    <p class="text-muted text-center">No recent activity</p>
-                {% endif %}
+                <h5><i class="fas fa-info-circle me-2"></i>How to Use</h5>
+                <ul class="mb-0">
+                    <li><strong>Navigation:</strong> Use Previous/Next buttons or arrow keys to browse documents</li>
+                    <li><strong>Zoom:</strong> Click on images to zoom in/out</li>
+                    <li><strong>OCR Text:</strong> Extracted text is shown alongside images when available</li>
+                    <li><strong>Keyboard:</strong> Use arrow keys, Home, End for quick navigation</li>
+                    <li><strong>Search:</strong> Search by filename to find specific documents</li>
+                </ul>
             </div>
         </div>
     </div>
 </div>
 
-<!-- Quick Actions -->
-<div class="row mt-4">
+{% else %}
+<!-- No Documents -->
+<div class="row">
     <div class="col-12">
-        <div class="card">
-            <div class="card-header">
-                <h5 class="mb-0">
-                    <i class="fas fa-bolt me-2"></i>
-                    Quick Actions
-                </h5>
-            </div>
-            <div class="card-body">
-                <div class="row">
-                    <div class="col-md-3 mb-2">
-                        <a href="{{ url_for('search') }}" class="btn btn-primary w-100">
-                            <i class="fas fa-search me-2"></i>Search Documents
-                        </a>
-                    </div>
-                    <div class="col-md-3 mb-2">
-                        <a href="{{ url_for('browse', status='completed') }}" class="btn btn-success w-100">
-                            <i class="fas fa-check-circle me-2"></i>View Completed
-                        </a>
-                    </div>
-                    <div class="col-md-3 mb-2">
-                        <a href="{{ url_for('browse', status='pending') }}" class="btn btn-warning w-100">
-                            <i class="fas fa-clock me-2"></i>View Pending
-                        </a>
-                    </div>
-                    <div class="col-md-3 mb-2">
-                        <a href="{{ url_for('browse', status='failed') }}" class="btn btn-danger w-100">
-                            <i class="fas fa-exclamation-triangle me-2"></i>View Errors
-                        </a>
-                    </div>
-                </div>
-            </div>
+        <div class="alert alert-warning text-center">
+            <i class="fas fa-exclamation-triangle fa-3x mb-3"></i>
+            <h4>No Documents Found</h4>
+            <p>No documents have been indexed yet. Please run the indexer first.</p>
         </div>
     </div>
 </div>
+{% endif %}
 {% endblock %}
 
 {% block extra_js %}
 <script>
-    // Update timestamp every second
-    function updateTimestamp() {
-        const now = new Date();
-        const timestamp = now.toLocaleString();
-        const timestampElement = document.querySelector('.text-muted');
-        if (timestampElement && timestampElement.textContent.includes('Last Updated:')) {
-            timestampElement.textContent = timestamp;
-        }
+    // Load OCR statistics
+    fetch('/api/stats')
+        .then(response => response.json())
+        .then(data => {
+            document.getElementById('ocr-count').textContent = data.images_with_ocr.toLocaleString();
+            document.getElementById('ocr-percentage').textContent = data.ocr_percentage.toFixed(1) + '%';
+        })
+        .catch(error => {
+            console.error('Error loading stats:', error);
+        });
+
+    // Random document function
+    function randomDocument() {
+        const totalImages = {{ total_images }};
+        const randomId = Math.floor(Math.random() * totalImages) + 1;
+        window.location.href = `/view/${randomId}`;
     }
-    
-    setInterval(updateTimestamp, 1000);
+
+    // Search function
+    function searchDocuments() {
+        const query = document.getElementById('search-input').value.trim();
+        if (!query) return;
+
+        fetch(`/api/search?q=${encodeURIComponent(query)}`)
+            .then(response => response.json())
+            .then(data => {
+                const resultsDiv = document.getElementById('search-results');
+                if (data.results.length === 0) {
+                    resultsDiv.innerHTML = '<div class="alert alert-info">No documents found.</div>';
+                    return;
+                }
+
+                let html = '<div class="list-group">';
+                data.results.forEach(result => {
+                    html += `
+                        <a href="/view/${result.id}" class="list-group-item list-group-item-action">
+                            <div class="d-flex w-100 justify-content-between">
+                                <h6 class="mb-1">${result.file_name}</h6>
+                                <small>${result.has_ocr_text ? '<i class="fas fa-file-text text-success"></i>' : '<i class="fas fa-clock text-muted"></i>'}</small>
+                            </div>
+                            <p class="mb-1 text-muted">${result.directory_path}</p>
+                        </a>
+                    `;
+                });
+                html += '</div>';
+                resultsDiv.innerHTML = html;
+            })
+            .catch(error => {
+                console.error('Search error:', error);
+                document.getElementById('search-results').innerHTML = '<div class="alert alert-danger">Search failed.</div>';
+            });
+    }
+
+    // Search on Enter key
+    document.getElementById('search-input').addEventListener('keypress', function(e) {
+        if (e.key === 'Enter') {
+            searchDocuments();
+        }
+    });
 </script>
 {% endblock %}

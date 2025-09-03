@@ -1,78 +1,102 @@
-# Epstein Documents Analysis Project
+# Epstein Documents Browser
 
-A Python-based analysis tool for the Epstein documents released by Congress in 2025.
+A simple, Archive.org-style document browser for congressional records released by Congress.
 
-## 📁 Project Structure
+## 🚀 Quick Start
+
+1. **Index the documents:**
+   ```bash
+   python index_images.py
+   ```
+
+2. **Start the web application:**
+   ```bash
+   python app.py
+   ```
+
+3. **Open your browser:**
+   - Homepage: http://localhost:8080
+   - API Stats: http://localhost:8080/api/stats
+
+## 📊 What We Have
+
+- **33,572 images** total
+- **30 images with OCR** (0.1% processed)
+- **1 volume** (VOL00001)
+- **12 IMAGES subdirectories** (IMAGES001 through IMAGES012)
+
+## 🎯 Features
+
+### Archive.org-Style Document Viewer
+- **Clean interface** - Dark theme with document focus
+- **Simple navigation** - Previous/Next buttons and keyboard shortcuts
+- **Progress tracking** - Visual progress bar showing position in document set
+- **Zoom controls** - Click to zoom, or use +/- buttons
+- **Fullscreen mode** - Press F11 or click fullscreen button
+
+### Keyboard Shortcuts
+- **Arrow Keys** - Navigate between documents
+- **Home/End** - Jump to first/last document
+- **+/-** - Zoom in/out
+- **Escape** - Exit fullscreen
+
+### Search & Navigation
+- **Filename search** - Find documents by name
+- **Quick navigation** - Jump to first, middle, or last document
+- **Random document** - Browse randomly
+- **Statistics** - Real-time OCR progress tracking
+
+## 🗂️ File Structure
 
 ```
 epstein-release/
-├── data/                    # Complete document repository (33,657 files)
-│   ├── extraction_metadata.json
-│   └── [29,773 JPG images, 3,799 TIF images, 56 WAV audio, 27 MP4 videos]
-├── src/                     # Source code for analysis tools
-├── requirements.txt         # Python dependencies
-├── venv/                   # Virtual environment
-└── README.md              # This file
+├── data/                          # Document images
+│   └── Prod 01_20250822/
+│       └── VOL00001/
+│           └── IMAGES/
+│               ├── IMAGES001/     # ~3,173 images
+│               ├── IMAGES002/     # ~3,014 images
+│               └── ...            # 12 total directories
+├── templates/                     # HTML templates
+│   ├── base.html                 # Base template
+│   ├── index.html                # Homepage
+│   └── viewer.html               # Document viewer
+├── app.py                        # Flask web application
+├── index_images.py               # Database indexer
+├── images.db                     # SQLite database
+└── README.md                     # This file
 ```
 
-## 🎯 Repository Status
+## 🔧 Technical Details
 
-✅ **Complete Repository Mirrored**
-- **33,657 files successfully extracted**
-- **File types:** JPG (29,773), TIF (3,799), WAV (56), MP4 (27), DAT (1), OPT (1)
-- **Source:** Browser download from Google Drive folder
-- **Extraction date:** 2025-09-03
+### Database Schema
+- **images table** - All document metadata
+- **directories table** - Directory structure
+- **Indexes** - Fast queries by path, volume, type
 
-## 🚀 Setup
+### Web Application
+- **Flask** - Python web framework
+- **Bootstrap 5** - Responsive UI
+- **Font Awesome** - Icons
+- **SQLite** - Local database
 
-1. **Activate virtual environment:**
-   ```bash
-   # Windows
-   .\venv\Scripts\Activate.ps1
-   
-   # Linux/Mac
-   source venv/bin/activate
-   ```
+## 📝 License
 
-2. **Install dependencies:**
-   ```bash
-   pip install -r requirements.txt
-   ```
+- **Code**: AGPLv3
+- **Content**: CC-BY-SA-4.0
+- **Original Documents**: Public Domain (Congressional Records)
 
-## 📊 Data Overview
+## 🎯 Next Steps
 
-The repository contains the complete set of Epstein documents released by Congress, including:
-- **Scanned documents** (JPG/TIF images with DOJ-OGR numbering)
-- **Audio recordings** (WAV files)
-- **Video files** (MP4 files)
-- **Database files** (DAT/OPT binary files)
+1. **OCR Processing** - Run TrOCR on all 33,572 images
+2. **Text Search** - Full-text search across OCR results
+3. **VPS Deployment** - 24/7 processing and hosting
+4. **Analysis Tools** - Redaction analysis and document categorization
 
-**Data Source:** [Google Drive Folder - Epstein Documents](https://drive.google.com/drive/folders/1TrGxDGQLDLZu1vvvZDBAh-e7wN3y6Hoz)
+## 🔗 Data Source
 
-## 🔧 Next Steps
+Original documents: https://drive.google.com/drive/folders/1TrGxDGQLDLZu1vvvZDBAh-e7wN3y6Hoz
 
-Ready for development of:
-- Document analysis tools for redacted content
-- Web interface for browsing and searching
-- Database setup for metadata and analysis results
-- OCR and text extraction capabilities
+---
 
-## 📝 Notes
-
-- All files are organized in the `data/` directory
-- Metadata is tracked in `data/extraction_metadata.json`
-- Virtual environment is pre-configured with all dependencies
-
-## 📄 Licensing
-
-### Code License
-This project's source code is licensed under the **GNU Affero General Public License v3.0 (AGPL-3.0)**. See [LICENSE](LICENSE) for full details.
-
-### Content License
-All original content created for this project (documentation, analysis, derived works) is licensed under **Creative Commons Attribution-ShareAlike 4.0 International (CC-BY-SA-4.0)**. See [CONTENT_LICENSE](CONTENT_LICENSE) for full details.
-
-### Source Documents
-The original Epstein documents processed by this system are part of the Congressional Record and are in the public domain. This project does not claim copyright over the original documents, only over the tools and analysis created to process them.
-
-### Third-Party Dependencies
-This project uses various open-source libraries and frameworks, each with their own licenses. See `requirements.txt` and individual package documentation for details.
+**Note**: This is a simple, functional document browser. No complex features, no over-engineering - just clean, fast document browsing like Archive.org.
