@@ -127,9 +127,34 @@
     </div>
 </div>
 
-<!-- Extracted Text -->
+<!-- Document Content -->
 <div class="row">
-    <div class="col-12">
+    {% if is_image and image_url %}
+    <!-- Image Display -->
+    <div class="col-md-6">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="mb-0">
+                    <i class="fas fa-image me-2"></i>
+                    Document Image
+                </h5>
+            </div>
+            <div class="card-body text-center">
+                <img src="{{ image_url }}" 
+                     class="img-fluid border rounded" 
+                     style="max-height: 800px; cursor: pointer;"
+                     onclick="toggleImageSize(this)"
+                     alt="Document Image">
+                <div class="mt-2">
+                    <small class="text-muted">Click image to toggle size</small>
+                </div>
+            </div>
+        </div>
+    </div>
+    {% endif %}
+    
+    <!-- Text Content -->
+    <div class="{% if is_image and image_url %}col-md-6{% else %}col-12{% endif %}">
         <div class="card">
             <div class="card-header d-flex justify-content-between align-items-center">
                 <h5 class="mb-0">
@@ -145,7 +170,7 @@
             <div class="card-body">
                 {% if extracted_text %}
                     <div id="extracted-text" class="border rounded p-3 bg-light" style="max-height: 600px; overflow-y: auto;">
-                        <pre class="mb-0" style="white-space: pre-wrap; font-family: 'Courier New', monospace; font-size: 0.9em;">{{ extracted_text }}</pre>
+                        <pre class="mb-0" style="white-space: pre-wrap; font-family: 'Courier New', monospace; font-size: 0.9em; line-height: 1.4;">{{ extracted_text }}</pre>
                     </div>
                 {% else %}
                     <div class="text-center py-5">
@@ -201,6 +226,16 @@
 
 {% block extra_js %}
 <script>
+    function toggleImageSize(img) {
+        if (img.style.maxHeight === '800px') {
+            img.style.maxHeight = 'none';
+            img.style.width = '100%';
+        } else {
+            img.style.maxHeight = '800px';
+            img.style.width = 'auto';
+        }
+    }
+    
     function copyToClipboard() {
         const textElement = document.getElementById('extracted-text');
         if (!textElement) {

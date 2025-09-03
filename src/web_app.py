@@ -110,22 +110,27 @@ def api_search():
 
 @app.route('/browse')
 def browse():
-    """Browse documents by status"""
+    """Browse documents by status or volume"""
     status = request.args.get('status', 'all')
+    volume = request.args.get('volume', None)
     page = request.args.get('page', 1, type=int)
     per_page = 50
     
-    # Get files by status
-    if status == 'all':
-        files = get_all_files()
-    elif status == 'completed':
-        files = get_completed_files()
-    elif status == 'pending':
-        files = get_pending_files()
-    elif status == 'failed':
-        files = get_failed_files()
+    if volume:
+        # Browse by volume
+        files = get_files_by_volume(volume)
     else:
-        files = get_all_files()
+        # Get files by status
+        if status == 'all':
+            files = get_all_files()
+        elif status == 'completed':
+            files = get_completed_files()
+        elif status == 'pending':
+            files = get_pending_files()
+        elif status == 'failed':
+            files = get_failed_files()
+        else:
+            files = get_all_files()
     
     # Pagination
     total = len(files)
@@ -138,9 +143,14 @@ def browse():
     has_prev = page > 1
     has_next = page < total_pages
     
+    # Get available volumes for navigation
+    volumes = get_available_volumes()
+    
     return render_template('browse.html', 
                          files=files_page,
                          status=status,
+                         volume=volume,
+                         volumes=volumes,
                          page=page,
                          total_pages=total_pages,
                          has_prev=has_prev,
@@ -165,10 +175,15 @@ def view_document(file_path):
     # Get extracted text if available
     extracted_text = get_extracted_text(file_path)
     
+    # Check if this is an image file
+    is_image = full_path.suffix.lower() in {'.jpg', '.jpeg', '.png', '.tif', '.tiff', '.bmp', '.webp'}
+    
     return render_template('document.html', 
                          doc_info=doc_info,
                          extracted_text=extracted_text,
-                         file_path=file_path)
+                         file_path=file_path,
+                         is_image=is_image,
+                         image_url=f"/static/{file_path}" if is_image else None)
 
 
 @app.route('/download/<path:file_path>')
@@ -186,6 +201,19 @@ def download_text(file_path):
     
     return send_file(text_file, as_attachment=True)
 
+
+@app.route('/static/<path:file_path>')
+def serve_static(file_path):
+    """Serve static files (images) from the data directory"""
+    # Security check - ensure file is within data directory
+    full_path = DATA_DIR / file_path
+    if not str(full_path).startswith(str(DATA_DIR)):
+        abort(403)
+    
+    if not full_path.exists():
+        abort(404)
+    
+    return send_file(full_path)
 
 @app.route('/api/health')
 def health_check():
@@ -328,6 +356,36 @@ def get_pending_files() -> List[Dict[str, Any]]:
 def get_failed_files() -> List[Dict[str, Any]]:
     """Get failed files from the database"""
     return progress_tracker.get_failed_files()
+
+
+def get_files_by_volume(volume: str) -> List[Dict[str, Any]]:
+    """Get files from a specific volume"""
+    volume_path = DATA_DIR / volume
+    if not volume_path.exists():
+        return []
+    
+    files = []
+    for ext in ['.jpg', '.jpeg', '.png', '.tif', '.tiff', '.bmp', '.webp']:
+        pattern = f"**/*{ext}"
+        found_files = list(volume_path.glob(pattern))
+        for file_path in found_files:
+            files.append({
+                'file_path': str(file_path.relative_to(DATA_DIR)),
+                'file_name': file_path.name,
+                'file_size': file_path.stat().st_size,
+                'status': 'completed' if (file_path.with_suffix('.txt')).exists() else 'pending'
+            })
+    
+    return sorted(files, key=lambda x: x['file_name'])
+
+
+def get_available_volumes() -> List[str]:
+    """Get list of available volumes"""
+    volumes = []
+    for item in DATA_DIR.iterdir():
+        if item.is_dir() and item.name.startswith('VOL'):
+            volumes.append(item.name)
+    return sorted(volumes)
 
 
 if __name__ == '__main__':
