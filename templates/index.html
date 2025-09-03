@@ -12,6 +12,40 @@
     </div>
 </div>
 
+<!-- Quick Navigation -->
+<div class="row mb-4">
+    <div class="col-12">
+        <div class="card bg-primary text-white">
+            <div class="card-body text-center">
+                <h5 class="card-title mb-3">
+                    <i class="fas fa-compass me-2"></i>
+                    Quick Navigation
+                </h5>
+                <div class="row">
+                    <div class="col-md-4 mb-2">
+                        <a href="{{ url_for('browse') }}" class="btn btn-light btn-lg w-100">
+                            <i class="fas fa-folder-open me-2"></i>
+                            Browse Documents
+                        </a>
+                    </div>
+                    <div class="col-md-4 mb-2">
+                        <a href="{{ url_for('browse', volume='VOL00001') }}" class="btn btn-light btn-lg w-100">
+                            <i class="fas fa-book me-2"></i>
+                            Volume 1
+                        </a>
+                    </div>
+                    <div class="col-md-4 mb-2">
+                        <a href="{{ url_for('search') }}" class="btn btn-light btn-lg w-100">
+                            <i class="fas fa-search me-2"></i>
+                            Search Text
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
 <!-- Overall Progress -->
 <div class="row mb-4">
     <div class="col-12">

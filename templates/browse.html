@@ -12,6 +12,27 @@
     </div>
 </div>
 
+<!-- Quick Access -->
+<div class="row mb-3">
+    <div class="col-12">
+        <div class="alert alert-info">
+            <h6 class="mb-2">
+                <i class="fas fa-info-circle me-2"></i>
+                Quick Access
+            </h6>
+            <p class="mb-2">Click any document name to view it with image and text side-by-side.</p>
+            <div class="btn-group btn-group-sm">
+                <a href="{{ url_for('index') }}" class="btn btn-outline-primary">
+                    <i class="fas fa-tachometer-alt me-1"></i>Dashboard
+                </a>
+                <a href="{{ url_for('search') }}" class="btn btn-outline-primary">
+                    <i class="fas fa-search me-1"></i>Search
+                </a>
+            </div>
+        </div>
+    </div>
+</div>
+
 <!-- Navigation Filters -->
 <div class="row mb-4">
     <div class="col-12">
