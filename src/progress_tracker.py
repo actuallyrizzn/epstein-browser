@@ -105,7 +105,7 @@ class ProgressTracker:
         Add files to tracking database
         
         Args:
-            file_paths: List of file paths to track
+            file_paths: List of file paths to track (can be Path objects or strings)
             
         Returns:
             Number of files added
@@ -117,6 +117,10 @@ class ProgressTracker:
             
             for file_path in file_paths:
                 try:
+                    # Convert to Path object if it's a string
+                    if isinstance(file_path, str):
+                        file_path = Path(file_path)
+                    
                     # Get file info
                     file_stat = file_path.stat()
                     file_name = file_path.name
@@ -397,6 +401,13 @@ class ProgressTracker:
             
             cursor.execute(query)
             return [dict(row) for row in cursor.fetchall()]
+    
+    def clear_all_files(self):
+        """Clear all files from the database"""
+        with sqlite3.connect(self.db_path) as conn:
+            cursor = conn.cursor()
+            cursor.execute("DELETE FROM files")
+            conn.commit()
     
     def close(self):
         """Close database connections"""

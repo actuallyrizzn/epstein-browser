@@ -29,16 +29,16 @@ from web_app import app
 
 if __name__ == '__main__':
     print("🚀 Starting Epstein Documents OCR Web Application...")
-    print("📊 Dashboard: http://localhost:5000")
-    print("🔍 Search: http://localhost:5000/search")
-    print("📁 Browse: http://localhost:5000/browse")
-    print("❤️  Health: http://localhost:5000/api/health")
+    print("📊 Dashboard: http://localhost:8080")
+    print("🔍 Search: http://localhost:8080/search")
+    print("📁 Browse: http://localhost:8080/browse")
+    print("❤️  Health: http://localhost:8080/api/health")
     print("\nPress Ctrl+C to stop the server")
     
     # Run the Flask app
     app.run(
         host='0.0.0.0',  # Allow external connections
-        port=5000,
+        port=8080,
         debug=True,      # Enable debug mode for development
         threaded=True    # Enable threading for better performance
     )
