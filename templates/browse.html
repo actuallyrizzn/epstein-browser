@@ -12,13 +12,13 @@
     </div>
 </div>
 
-<!-- Quick Access -->
-<div class="row mb-3">
+<!-- Simple Info -->
+<div class="row mb-4">
     <div class="col-12">
         <div class="alert alert-info">
             <h6 class="mb-2">
                 <i class="fas fa-info-circle me-2"></i>
-                Quick Access
+                Document Browser
             </h6>
             <p class="mb-2">Click any document name to view it with image and text side-by-side.</p>
             <div class="btn-group btn-group-sm">
@@ -29,86 +29,11 @@
                     <i class="fas fa-search me-1"></i>Search
                 </a>
             </div>
-        </div>
-    </div>
-</div>
-
-<!-- Navigation Filters -->
-<div class="row mb-4">
-    <div class="col-12">
-        <div class="card">
-            <div class="card-body">
-                <!-- Status Filter -->
-                <div class="mb-3">
-                    <h6>Filter by Status:</h6>
-                    <div class="btn-group" role="group">
-                        <a href="{{ url_for('browse', status='all') }}" 
-                           class="btn {% if status == 'all' and not volume %}btn-primary{% else %}btn-outline-primary{% endif %}">
-                            <i class="fas fa-list me-2"></i>All Files
-                        </a>
-                        <a href="{{ url_for('browse', status='completed') }}" 
-                           class="btn {% if status == 'completed' %}btn-success{% else %}btn-outline-success{% endif %}">
-                            <i class="fas fa-check-circle me-2"></i>Completed
-                        </a>
-                        <a href="{{ url_for('browse', status='pending') }}" 
-                           class="btn {% if status == 'pending' %}btn-warning{% else %}btn-outline-warning{% endif %}">
-                            <i class="fas fa-clock me-2"></i>Pending
-                        </a>
-                        <a href="{{ url_for('browse', status='failed') }}" 
-                           class="btn {% if status == 'failed' %}btn-danger{% else %}btn-outline-danger{% endif %}">
-                            <i class="fas fa-exclamation-triangle me-2"></i>Failed
-                        </a>
-                    </div>
-                </div>
-                
-                <!-- Volume Filter -->
-                {% if volumes %}
-                <div class="mb-3">
-                    <h6>Browse by Volume:</h6>
-                    <div class="btn-group flex-wrap" role="group">
-                        {% for vol in volumes %}
-                        <a href="{{ url_for('browse', volume=vol) }}" 
-                           class="btn {% if volume == vol %}btn-info{% else %}btn-outline-info{% endif %} btn-sm">
-                            {{ vol }}
-                        </a>
-                        {% endfor %}
-                    </div>
-                </div>
-                {% endif %}
-                
-                <!-- Directory Tree -->
-                {% if directories %}
-                <div class="mb-3">
-                    <h6>Browse by Directory:</h6>
-                    <div class="row">
-                        <div class="col-md-6">
-                            <div class="list-group" style="max-height: 300px; overflow-y: auto;">
-                                {% for dir in directories %}
-                                {% if dir.level <= 2 %}
-                                <a href="{{ url_for('browse', directory=dir.path) }}" 
-                                   class="list-group-item list-group-item-action {% if directory == dir.path %}active{% endif %}">
-                                    <i class="fas fa-folder me-2"></i>
-                                    {{ dir.name }}
-                                    <span class="badge bg-secondary ms-2">{{ dir.file_count }}</span>
-                                </a>
-                                {% endif %}
-                                {% endfor %}
-                            </div>
-                        </div>
-                    </div>
-                </div>
-                {% endif %}
-                
-                <div class="mt-3">
-                    <small class="text-muted">
-                        <i class="fas fa-info-circle me-1"></i>
-                        {% if volume %}
-                            Showing files from {{ volume }} ({{ total }} total)
-                        {% else %}
-                            Showing {{ status|title }} files ({{ total }} total)
-                        {% endif %}
-                    </small>
-                </div>
+            <div class="mt-2">
+                <small class="text-muted">
+                    <i class="fas fa-info-circle me-1"></i>
+                    Showing {{ total }} total documents
+                </small>
             </div>
         </div>
     </div>
