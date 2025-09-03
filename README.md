@@ -2,21 +2,58 @@
 
 A simple, Archive.org-style document browser for congressional records released by Congress.
 
-## 🚀 Quick Start
+## 🚀 Complete Setup Guide
 
-1. **Index the documents:**
-   ```bash
-   python index_images.py
-   ```
+### Step 1: Download the Documents
+1. **Go to the Google Drive folder:** https://drive.google.com/drive/folders/1TrGxDGQLDLZu1vvvZDBAh-e7wN3y6Hoz
+2. **Select all files** (Ctrl+A or Cmd+A)
+3. **Right-click and choose "Download"** - this will create a ZIP file
+4. **Extract the ZIP file** to a folder named `data` in your project directory
+5. **Verify the structure:** You should have `data/Prod 01_20250822/VOL00001/IMAGES/` with 12 IMAGES subdirectories
 
-2. **Start the web application:**
-   ```bash
-   python app.py
-   ```
+### Step 2: Set Up Python Environment
+```bash
+# Create virtual environment
+python -m venv venv
 
-3. **Open your browser:**
-   - Homepage: http://localhost:8080
-   - API Stats: http://localhost:8080/api/stats
+# Activate virtual environment
+# On Windows:
+venv\Scripts\activate
+# On macOS/Linux:
+source venv/bin/activate
+
+# Install dependencies
+pip install -r requirements.txt
+```
+
+### Step 3: Index the Documents
+```bash
+# Run the image indexer (this will scan all 33,572 images)
+python index_images.py
+
+# You should see output like:
+# 🔍 Epstein Documents Image Indexer
+# ==================================================
+# Indexed 33,572 images...
+# ✅ Indexing complete!
+```
+
+### Step 4: Start the Web Application
+```bash
+# Start the Flask web server
+python app.py
+
+# You should see output like:
+# 🚀 Starting Epstein Documents Browser...
+# 📖 Browse: http://localhost:8080
+# 📊 Stats: http://localhost:8080/api/stats
+# Press Ctrl+C to stop the server
+```
+
+### Step 5: Browse the Documents
+- **Homepage:** http://localhost:8080
+- **API Stats:** http://localhost:8080/api/stats
+- **Document Viewer:** http://localhost:8080/view/1
 
 ## 📊 What We Have
 
@@ -70,8 +107,8 @@ epstein-release/
 ## 🔧 Technical Details
 
 ### Database Schema
-- **images table** - All document metadata
-- **directories table** - Directory structure
+- **images table** - All document metadata (33,572 records)
+- **directories table** - Directory structure (21 directories)
 - **Indexes** - Fast queries by path, volume, type
 
 ### Web Application
@@ -79,6 +116,37 @@ epstein-release/
 - **Bootstrap 5** - Responsive UI
 - **Font Awesome** - Icons
 - **SQLite** - Local database
+- **Pillow (PIL)** - TIF to JPEG conversion
+
+### Image Processing
+- **TIF files** - Automatically converted to JPEG for browser compatibility
+- **JPG files** - Served directly
+- **Quality** - 85% JPEG quality for optimal file size vs. readability
+
+## 🛠️ Troubleshooting
+
+### Common Issues
+
+**Images not displaying:**
+- Make sure you've run `python index_images.py` first
+- Check that the `data` folder exists and contains the documents
+- Verify the database file `images.db` was created
+
+**TIF files showing as broken:**
+- This is now fixed! TIF files are automatically converted to JPEG
+- If you still see issues, restart the Flask app: `python app.py`
+
+**Port 8080 already in use:**
+- Change the port in `app.py` line 218: `port=8080` to `port=8081`
+- Or stop the other service using port 8080
+
+**Virtual environment issues:**
+- Make sure you've activated the venv: `venv\Scripts\activate` (Windows)
+- Install dependencies: `pip install -r requirements.txt`
+
+**Database errors:**
+- Delete `images.db` and run `python index_images.py` again
+- Make sure you have write permissions in the project directory
 
 ## 📝 License
 
