@@ -62,3 +62,17 @@ Ready for development of:
 - All files are organized in the `data/` directory
 - Metadata is tracked in `data/extraction_metadata.json`
 - Virtual environment is pre-configured with all dependencies
+
+## 📄 Licensing
+
+### Code License
+This project's source code is licensed under the **GNU Affero General Public License v3.0 (AGPL-3.0)**. See [LICENSE](LICENSE) for full details.
+
+### Content License
+All original content created for this project (documentation, analysis, derived works) is licensed under **Creative Commons Attribution-ShareAlike 4.0 International (CC-BY-SA-4.0)**. See [CONTENT_LICENSE](CONTENT_LICENSE) for full details.
+
+### Source Documents
+The original Epstein documents processed by this system are part of the Congressional Record and are in the public domain. This project does not claim copyright over the original documents, only over the tools and analysis created to process them.
+
+### Third-Party Dependencies
+This project uses various open-source libraries and frameworks, each with their own licenses. See `requirements.txt` and individual package documentation for details.
