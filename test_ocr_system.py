@@ -85,40 +85,46 @@ def test_progress_tracker():
         # Initialize tracker
         tracker = ProgressTracker("test_progress.db")
         
-        # Test adding files
-        test_files = [
-            Path("test1.jpg"),
-            Path("test2.tif"),
-            Path("test3.jpg")
-        ]
-        
-        added = tracker.add_files(test_files)
-        print(f"Added {added} files")
-        
-        # Test getting pending files
-        pending = tracker.get_pending_files()
-        print(f"Pending files: {len(pending)}")
-        
-        # Test updating status
-        if pending:
-            file_path = pending[0]['file_path']
-            success = tracker.update_file_status(
-                file_path, 'completed', 
-                processing_time=1.5, 
-                text_length=100,
-                model_used='trocr-base',
-                device_used='cpu'
-            )
-            print(f"Status update successful: {success}")
-        
-        # Test statistics
-        stats = tracker.get_statistics()
-        print(f"Statistics: {stats}")
-        
-        # Clean up test database
-        Path("test_progress.db").unlink(missing_ok=True)
-        print("Progress Tracker test completed successfully")
-        return True
+        # Test adding files - use actual files from data directory
+        data_dir = Path("data")
+        if data_dir.exists():
+            # Find first few image files
+            image_files = list(data_dir.glob("*.jpg"))[:3] + list(data_dir.glob("*.tif"))[:3]
+            if image_files:
+                added = tracker.add_files(image_files)
+                print(f"Added {added} files")
+                
+                # Test getting pending files
+                pending = tracker.get_pending_files()
+                print(f"Pending files: {len(pending)}")
+                
+                # Test updating status
+                if pending:
+                    file_path = pending[0]['file_path']
+                    success = tracker.update_file_status(
+                        file_path, 'completed', 
+                        processing_time=1.5, 
+                        text_length=100,
+                        model_used='trocr-base',
+                        device_used='cpu'
+                    )
+                    print(f"Status update successful: {success}")
+                
+                # Test statistics
+                stats = tracker.get_statistics()
+                print(f"Statistics: {stats}")
+                
+                # Clean up test database
+                tracker.close()  # Close connection first
+                Path("test_progress.db").unlink(missing_ok=True)
+                print("Progress Tracker test completed successfully")
+                return True
+            else:
+                print("No test images found in data directory")
+                return False
+        else:
+            print("Data directory not found")
+            return False
         
     except Exception as e:
         print(f"Progress Tracker test failed: {e}")
@@ -143,6 +149,7 @@ def test_batch_processor():
         processor.run_processing(max_files=10)
         
         # Clean up test database
+        processor.progress_tracker.close()  # Close connection first
         Path("test_batch.db").unlink(missing_ok=True)
         print("Batch Processor test completed successfully")
         return True

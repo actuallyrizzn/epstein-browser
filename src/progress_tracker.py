@@ -334,6 +334,75 @@ class ProgressTracker:
             """, (limit,))
             
             return [dict(row) for row in cursor.fetchall()]
+    
+    def get_all_files(self, limit: Optional[int] = None) -> List[Dict[str, Any]]:
+        """
+        Get all files from the database
+        
+        Args:
+            limit: Maximum number of files to return
+            
+        Returns:
+            List of all file records
+        """
+        with sqlite3.connect(self.db_path) as conn:
+            conn.row_factory = sqlite3.Row
+            cursor = conn.cursor()
+            
+            query = "SELECT * FROM files ORDER BY updated_at DESC"
+            if limit:
+                query += f" LIMIT {limit}"
+            
+            cursor.execute(query)
+            return [dict(row) for row in cursor.fetchall()]
+    
+    def get_completed_files(self, limit: Optional[int] = None) -> List[Dict[str, Any]]:
+        """
+        Get completed files from the database
+        
+        Args:
+            limit: Maximum number of files to return
+            
+        Returns:
+            List of completed file records
+        """
+        with sqlite3.connect(self.db_path) as conn:
+            conn.row_factory = sqlite3.Row
+            cursor = conn.cursor()
+            
+            query = "SELECT * FROM files WHERE status = 'completed' ORDER BY updated_at DESC"
+            if limit:
+                query += f" LIMIT {limit}"
+            
+            cursor.execute(query)
+            return [dict(row) for row in cursor.fetchall()]
+    
+    def get_failed_files(self, limit: Optional[int] = None) -> List[Dict[str, Any]]:
+        """
+        Get failed files from the database
+        
+        Args:
+            limit: Maximum number of files to return
+            
+        Returns:
+            List of failed file records
+        """
+        with sqlite3.connect(self.db_path) as conn:
+            conn.row_factory = sqlite3.Row
+            cursor = conn.cursor()
+            
+            query = "SELECT * FROM files WHERE status = 'failed' ORDER BY updated_at DESC"
+            if limit:
+                query += f" LIMIT {limit}"
+            
+            cursor.execute(query)
+            return [dict(row) for row in cursor.fetchall()]
+    
+    def close(self):
+        """Close database connections"""
+        # SQLite connections are automatically closed when the context manager exits
+        # This method is provided for compatibility and future use
+        pass
 
 
 def test_progress_tracker():

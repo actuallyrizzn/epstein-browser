@@ -1,0 +1,288 @@
+{% extends "base.html" %}
+
+{% block title %}Dashboard - Epstein Documents OCR Progress{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-12">
+        <h1 class="mb-4">
+            <i class="fas fa-tachometer-alt me-2"></i>
+            OCR Processing Dashboard
+        </h1>
+    </div>
+</div>
+
+<!-- Overall Progress -->
+<div class="row mb-4">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="mb-0">
+                    <i class="fas fa-chart-line me-2"></i>
+                    Overall Progress
+                </h5>
+            </div>
+            <div class="card-body">
+                <div class="progress mb-3" style="height: 30px;">
+                    <div id="overall-progress" class="progress-bar progress-bar-striped progress-bar-animated bg-success" 
+                         role="progressbar" style="width: {{ (stats.processed_count / stats.total_files * 100) if stats.total_files > 0 else 0 }}%">
+                        {{ "%.1f"|format((stats.processed_count / stats.total_files * 100) if stats.total_files > 0 else 0) }}%
+                    </div>
+                </div>
+                <div class="row text-center">
+                    <div class="col-md-3">
+                        <strong id="processed-count">{{ stats.processed_count|default(0) }}</strong><br>
+                        <small class="text-muted">Processed</small>
+                    </div>
+                    <div class="col-md-3">
+                        <strong id="total-count">{{ stats.total_files|default(0) }}</strong><br>
+                        <small class="text-muted">Total Files</small>
+                    </div>
+                    <div class="col-md-3">
+                        <strong id="error-count">{{ stats.error_count|default(0) }}</strong><br>
+                        <small class="text-muted">Errors</small>
+                    </div>
+                    <div class="col-md-3">
+                        <strong>{{ eta }}</strong><br>
+                        <small class="text-muted">ETA</small>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Statistics Cards -->
+<div class="row mb-4">
+    <div class="col-md-3 mb-3">
+        <div class="card stats-card h-100">
+            <div class="card-body text-center">
+                <i class="fas fa-file-alt fa-2x text-primary mb-2"></i>
+                <h4 class="card-title">{{ stats.total_files|default(0) }}</h4>
+                <p class="card-text text-muted">Total Documents</p>
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-md-3 mb-3">
+        <div class="card stats-card h-100">
+            <div class="card-body text-center">
+                <i class="fas fa-check-circle fa-2x text-success mb-2"></i>
+                <h4 class="card-title">{{ stats.processed_count|default(0) }}</h4>
+                <p class="card-text text-muted">Completed</p>
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-md-3 mb-3">
+        <div class="card stats-card h-100">
+            <div class="card-body text-center">
+                <i class="fas fa-clock fa-2x text-warning mb-2"></i>
+                <h4 class="card-title">{{ (stats.total_files - stats.processed_count)|default(0) }}</h4>
+                <p class="card-text text-muted">Pending</p>
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-md-3 mb-3">
+        <div class="card stats-card h-100">
+            <div class="card-body text-center">
+                <i class="fas fa-exclamation-triangle fa-2x text-danger mb-2"></i>
+                <h4 class="card-title">{{ stats.error_count|default(0) }}</h4>
+                <p class="card-text text-muted">Errors</p>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Performance Metrics -->
+<div class="row mb-4">
+    <div class="col-md-6">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="mb-0">
+                    <i class="fas fa-stopwatch me-2"></i>
+                    Performance Metrics
+                </h5>
+            </div>
+            <div class="card-body">
+                <div class="row">
+                    <div class="col-6">
+                        <strong>Avg Processing Time:</strong><br>
+                        <span class="text-primary">{{ "%.2f"|format(stats.avg_processing_time|default(0)) }}s</span>
+                    </div>
+                    <div class="col-6">
+                        <strong>Min Processing Time:</strong><br>
+                        <span class="text-success">{{ "%.2f"|format(stats.min_processing_time|default(0)) }}s</span>
+                    </div>
+                </div>
+                <hr>
+                <div class="row">
+                    <div class="col-6">
+                        <strong>Max Processing Time:</strong><br>
+                        <span class="text-warning">{{ "%.2f"|format(stats.max_processing_time|default(0)) }}s</span>
+                    </div>
+                    <div class="col-6">
+                        <strong>Completion Rate:</strong><br>
+                        <span class="text-info">{{ "%.1f"|format(stats.completion_percentage|default(0)) }}%</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-md-6">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="mb-0">
+                    <i class="fas fa-info-circle me-2"></i>
+                    System Information
+                </h5>
+            </div>
+            <div class="card-body">
+                <div class="row">
+                    <div class="col-12">
+                        <strong>Processing Status:</strong><br>
+                        {% if stats.processed_count > 0 %}
+                            <span class="badge bg-success">Active</span>
+                        {% else %}
+                            <span class="badge bg-secondary">Not Started</span>
+                        {% endif %}
+                    </div>
+                </div>
+                <hr>
+                <div class="row">
+                    <div class="col-12">
+                        <strong>Last Updated:</strong><br>
+                        <span class="text-muted">{{ moment().format('YYYY-MM-DD HH:mm:ss') }}</span>
+                    </div>
+                </div>
+                <hr>
+                <div class="row">
+                    <div class="col-12">
+                        <strong>Estimated Completion:</strong><br>
+                        <span class="text-primary">{{ eta }}</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Recent Activity -->
+<div class="row">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <h5 class="mb-0">
+                    <i class="fas fa-history me-2"></i>
+                    Recent Activity
+                </h5>
+                <a href="{{ url_for('browse') }}" class="btn btn-sm btn-outline-primary">
+                    View All
+                </a>
+            </div>
+            <div class="card-body">
+                {% if recent_activity %}
+                    <div class="table-responsive">
+                        <table class="table table-sm">
+                            <thead>
+                                <tr>
+                                    <th>File</th>
+                                    <th>Status</th>
+                                    <th>Processing Time</th>
+                                    <th>Timestamp</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for activity in recent_activity %}
+                                <tr>
+                                    <td>
+                                        <small class="text-muted">{{ activity.file_name }}</small>
+                                    </td>
+                                    <td>
+                                        {% if activity.status == 'completed' %}
+                                            <span class="badge bg-success status-badge">Completed</span>
+                                        {% elif activity.status == 'failed' %}
+                                            <span class="badge bg-danger status-badge">Failed</span>
+                                        {% else %}
+                                            <span class="badge bg-warning status-badge">{{ activity.status|title }}</span>
+                                        {% endif %}
+                                    </td>
+                                    <td>
+                                        {% if activity.processing_time %}
+                                            <small>{{ "%.2f"|format(activity.processing_time) }}s</small>
+                                        {% else %}
+                                            <small class="text-muted">-</small>
+                                        {% endif %}
+                                    </td>
+                                    <td>
+                                        <small class="text-muted">{{ activity.created_at }}</small>
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                {% else %}
+                    <p class="text-muted text-center">No recent activity</p>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Quick Actions -->
+<div class="row mt-4">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="mb-0">
+                    <i class="fas fa-bolt me-2"></i>
+                    Quick Actions
+                </h5>
+            </div>
+            <div class="card-body">
+                <div class="row">
+                    <div class="col-md-3 mb-2">
+                        <a href="{{ url_for('search') }}" class="btn btn-primary w-100">
+                            <i class="fas fa-search me-2"></i>Search Documents
+                        </a>
+                    </div>
+                    <div class="col-md-3 mb-2">
+                        <a href="{{ url_for('browse', status='completed') }}" class="btn btn-success w-100">
+                            <i class="fas fa-check-circle me-2"></i>View Completed
+                        </a>
+                    </div>
+                    <div class="col-md-3 mb-2">
+                        <a href="{{ url_for('browse', status='pending') }}" class="btn btn-warning w-100">
+                            <i class="fas fa-clock me-2"></i>View Pending
+                        </a>
+                    </div>
+                    <div class="col-md-3 mb-2">
+                        <a href="{{ url_for('browse', status='failed') }}" class="btn btn-danger w-100">
+                            <i class="fas fa-exclamation-triangle me-2"></i>View Errors
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    // Update timestamp every second
+    function updateTimestamp() {
+        const now = new Date();
+        const timestamp = now.toLocaleString();
+        const timestampElement = document.querySelector('.text-muted');
+        if (timestampElement && timestampElement.textContent.includes('Last Updated:')) {
+            timestampElement.textContent = timestamp;
+        }
+    }
+    
+    setInterval(updateTimestamp, 1000);
+</script>
+{% endblock %}
