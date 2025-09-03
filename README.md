@@ -47,6 +47,8 @@ The repository contains the complete set of Epstein documents released by Congre
 - **Video files** (MP4 files)
 - **Database files** (DAT/OPT binary files)
 
+**Data Source:** [Google Drive Folder - Epstein Documents](https://drive.google.com/drive/folders/1TrGxDGQLDLZu1vvvZDBAh-e7wN3y6Hoz)
+
 ## 🔧 Next Steps
 
 Ready for development of:
