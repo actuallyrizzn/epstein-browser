@@ -31,14 +31,16 @@ from flask import Flask, render_template, jsonify, request, send_file, abort
 from werkzeug.exceptions import NotFound
 
 from progress_tracker import ProgressTracker
+from web_database import WebDatabase
 
 # Initialize Flask app with proper template directory
 template_dir = Path(__file__).parent.parent / "templates"
 app = Flask(__name__, template_folder=str(template_dir))
 app.config['SECRET_KEY'] = os.environ.get('SECRET_KEY', 'dev-secret-key-change-in-production')
 
-# Initialize progress tracker
+# Initialize progress tracker and web database
 progress_tracker = ProgressTracker()
+web_database = WebDatabase()
 
 # Configuration
 DATA_DIR = Path("data")
@@ -110,47 +112,41 @@ def api_search():
 
 @app.route('/browse')
 def browse():
-    """Browse documents by status or volume"""
+    """Browse documents by status, volume, or directory"""
     status = request.args.get('status', 'all')
     volume = request.args.get('volume', None)
+    directory = request.args.get('directory', None)
     page = request.args.get('page', 1, type=int)
     per_page = 50
     
-    if volume:
+    # Get files based on filter
+    if directory:
+        # Browse by directory
+        files, total = web_database.get_files_by_directory(directory, page, per_page)
+    elif volume:
         # Browse by volume
-        files = get_files_by_volume(volume)
+        files, total = web_database.get_files_by_volume(volume, page, per_page)
     else:
-        # Get files by status
-        if status == 'all':
-            files = get_all_files()
-        elif status == 'completed':
-            files = get_completed_files()
-        elif status == 'pending':
-            files = get_pending_files()
-        elif status == 'failed':
-            files = get_failed_files()
-        else:
-            files = get_all_files()
-    
-    # Pagination
-    total = len(files)
-    start = (page - 1) * per_page
-    end = start + per_page
-    files_page = files[start:end]
+        # Get all files with pagination
+        files, total = web_database.get_all_files(page, per_page)
     
     # Calculate pagination info
     total_pages = (total + per_page - 1) // per_page
     has_prev = page > 1
     has_next = page < total_pages
     
-    # Get available volumes for navigation
-    volumes = get_available_volumes()
+    # Get available volumes and directories for navigation
+    stats = web_database.get_statistics()
+    volumes = [vol['volume'] for vol in stats['volumes']]
+    directories = web_database.get_directory_tree()
     
     return render_template('browse.html', 
-                         files=files_page,
+                         files=files,
                          status=status,
                          volume=volume,
+                         directory=directory,
                          volumes=volumes,
+                         directories=directories,
                          page=page,
                          total_pages=total_pages,
                          has_prev=has_prev,
@@ -169,8 +165,19 @@ def view_document(file_path):
     if not full_path.exists():
         abort(404)
     
-    # Get document info
-    doc_info = get_document_info(file_path)
+    # Get document info from web database
+    doc_info = web_database.get_file_by_path(file_path)
+    if not doc_info:
+        # Fallback to basic info if not in database
+        doc_info = {
+            'file_name': full_path.name,
+            'file_size': full_path.stat().st_size,
+            'file_type': full_path.suffix.lower(),
+            'directory_path': str(full_path.parent.relative_to(DATA_DIR)),
+            'volume': None,
+            'has_ocr_text': False,
+            'ocr_status': 'pending'
+        }
     
     # Get extracted text if available
     extracted_text = get_extracted_text(file_path)

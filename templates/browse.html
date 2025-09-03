@@ -76,6 +76,29 @@
                 </div>
                 {% endif %}
                 
+                <!-- Directory Tree -->
+                {% if directories %}
+                <div class="mb-3">
+                    <h6>Browse by Directory:</h6>
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="list-group" style="max-height: 300px; overflow-y: auto;">
+                                {% for dir in directories %}
+                                {% if dir.level <= 2 %}
+                                <a href="{{ url_for('browse', directory=dir.path) }}" 
+                                   class="list-group-item list-group-item-action {% if directory == dir.path %}active{% endif %}">
+                                    <i class="fas fa-folder me-2"></i>
+                                    {{ dir.name }}
+                                    <span class="badge bg-secondary ms-2">{{ dir.file_count }}</span>
+                                </a>
+                                {% endif %}
+                                {% endfor %}
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                {% endif %}
+                
                 <div class="mt-3">
                     <small class="text-muted">
                         <i class="fas fa-info-circle me-1"></i>
