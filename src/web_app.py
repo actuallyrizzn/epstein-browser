@@ -32,8 +32,9 @@ from werkzeug.exceptions import NotFound
 
 from progress_tracker import ProgressTracker
 
-# Initialize Flask app
-app = Flask(__name__)
+# Initialize Flask app with proper template directory
+template_dir = Path(__file__).parent.parent / "templates"
+app = Flask(__name__, template_folder=str(template_dir))
 app.config['SECRET_KEY'] = os.environ.get('SECRET_KEY', 'dev-secret-key-change-in-production')
 
 # Initialize progress tracker
@@ -63,7 +64,8 @@ def index():
     return render_template('index.html', 
                          stats=stats, 
                          recent_activity=recent_activity,
-                         eta=eta_str)
+                         eta=eta_str,
+                         current_time=datetime.now().strftime('%Y-%m-%d %H:%M:%S'))
 
 
 @app.route('/api/stats')
