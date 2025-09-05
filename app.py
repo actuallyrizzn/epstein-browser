@@ -27,14 +27,38 @@ from pathlib import Path
 from flask import Flask, render_template, request, jsonify, send_file, abort
 from PIL import Image
 import io
+from dotenv import load_dotenv
 
-# Configuration
-DATA_DIR = Path("data")
-DB_PATH = "images.db"
+# Load environment variables from .env file
+load_dotenv()
+
+# Configuration from environment variables
+DATA_DIR = Path(os.environ.get('DATA_DIR', 'data'))
+DB_PATH = os.environ.get('DATABASE_PATH', 'images.db')
+
+# Environment detection
+IS_PRODUCTION = os.environ.get('FLASK_ENV') == 'production'
 
 # Initialize Flask app
 app = Flask(__name__)
-app.config['SECRET_KEY'] = os.environ.get('SECRET_KEY', 'dev-secret-key')
+
+# Environment-based configuration
+if IS_PRODUCTION:
+    app.config['SECRET_KEY'] = os.environ.get('SECRET_KEY', 'prod-secret-key-change-me')
+    app.config['DEBUG'] = os.environ.get('DEBUG', 'False').lower() == 'true'
+    app.config['TESTING'] = os.environ.get('TESTING', 'False').lower() == 'true'
+    HOST = os.environ.get('HOST', '127.0.0.1')  # localhost only for nginx proxy
+    PORT = int(os.environ.get('PORT', '8080'))
+    DEBUG_MODE = app.config['DEBUG']
+    ENV_NAME = "Production"
+else:
+    app.config['SECRET_KEY'] = os.environ.get('SECRET_KEY', 'dev-secret-key')
+    app.config['DEBUG'] = os.environ.get('DEBUG', 'True').lower() == 'true'
+    app.config['TESTING'] = os.environ.get('TESTING', 'False').lower() == 'true'
+    HOST = os.environ.get('HOST', '0.0.0.0')  # accessible from any IP
+    PORT = int(os.environ.get('PORT', '8080'))
+    DEBUG_MODE = app.config['DEBUG']
+    ENV_NAME = "Development"
 
 
 def get_db_connection():
@@ -228,14 +252,16 @@ def api_search():
 
 
 if __name__ == '__main__':
-    print("🚀 Starting Epstein Documents Browser...")
-    print("📖 Browse: http://localhost:8080")
-    print("📊 Stats: http://localhost:8080/api/stats")
+    print(f"🚀 Starting Epstein Documents Browser ({ENV_NAME})...")
+    print(f"📖 Browse: http://localhost:8080")
+    print(f"📊 Stats: http://localhost:8080/api/stats")
+    if not IS_PRODUCTION:
+        print(f"🌐 Accessible from: http://0.0.0.0:8080")
     print("\nPress Ctrl+C to stop the server")
     
     app.run(
-        host='0.0.0.0',
-        port=8080,
-        debug=True,
+        host=HOST,
+        port=PORT,
+        debug=DEBUG_MODE,
         threaded=True
     )

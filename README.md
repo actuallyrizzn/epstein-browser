@@ -168,3 +168,37 @@ Original documents: https://drive.google.com/drive/folders/1TrGxDGQLDLZu1vvvZDBA
 ---
 
 **Note**: This is a simple, functional document browser. No complex features, no over-engineering - just clean, fast document browsing like Archive.org.
+## Environment Configuration
+
+This application uses environment variables for configuration. Copy `.env.example` to `.env` and customize the values for your environment.
+
+### Setup
+
+1. Copy the example environment file:
+   ```bash
+   cp .env.example .env
+   ```
+
+2. Edit `.env` with your production values:
+   ```bash
+   nano .env
+   ```
+
+3. **Important**: Never commit `.env` to git - it contains sensitive information!
+
+### Environment Variables
+
+- `FLASK_ENV`: Set to `production` for production deployment
+- `SECRET_KEY`: Strong secret key for Flask sessions (generate with `openssl rand -hex 32`)
+- `DATABASE_PATH`: Path to the SQLite database file
+- `DATA_DIR`: Directory containing the document images
+- `HOST`: Server host (use `127.0.0.1` for nginx proxy)
+- `PORT`: Server port
+- `DEBUG`: Enable/disable debug mode
+- `TESTING`: Enable/disable testing mode
+
+### Security
+
+- The `.env` file is automatically ignored by git
+- Use strong, unique secret keys in production
+- Never share your `.env` file or commit it to version control
