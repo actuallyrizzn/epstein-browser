@@ -192,6 +192,17 @@
                         '<span class="badge bg-primary me-2">Filename</span>' : 
                         '<span class="badge bg-success me-2">Content</span>';
                     
+                    // Add excerpt for OCR matches
+                    let excerptHtml = '';
+                    if (result.excerpt) {
+                        // Highlight the search term in the excerpt
+                        const highlightedExcerpt = result.excerpt.replace(
+                            new RegExp(`(${query})`, 'gi'), 
+                            '<mark>$1</mark>'
+                        );
+                        excerptHtml = `<div class="mt-2"><small class="text-muted">${highlightedExcerpt}</small></div>`;
+                    }
+                    
                     html += `
                         <a href="/view/${result.id}" class="list-group-item list-group-item-action">
                             <div class="d-flex w-100 justify-content-between">
@@ -199,6 +210,7 @@
                                 <small>${result.has_ocr_text ? '<i class="fas fa-file-text text-success"></i>' : '<i class="fas fa-clock text-muted"></i>'}</small>
                             </div>
                             <p class="mb-1 text-muted">${result.directory_path}</p>
+                            ${excerptHtml}
                         </a>
                     `;
                 });

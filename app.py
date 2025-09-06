@@ -29,7 +29,7 @@ import time
 import uuid
 from datetime import datetime, timedelta
 from pathlib import Path
-from flask import Flask, render_template, request, jsonify, send_file, abort, session, redirect, url_for, flash
+from flask import Flask, render_template, request, jsonify, send_file, abort, session, redirect, url_for, flash, make_response
 from PIL import Image
 import io
 from dotenv import load_dotenv
@@ -411,36 +411,32 @@ def api_search():
     
     conn = get_db_connection()
     
-    # Search by filename first (exact matches get priority)
-    filename_results = conn.execute("""
-        SELECT id, file_name, file_path, directory_path, has_ocr_text, 'filename' as match_type
-        FROM images 
-        WHERE file_name LIKE ? 
-        ORDER BY 
-            CASE WHEN file_name LIKE ? THEN 1 ELSE 2 END,
-            file_name 
-        LIMIT 25
-    """, (f'%{query}%', f'{query}%')).fetchall()
-    
-    # Search by OCR text content
-    ocr_results = conn.execute("""
-        SELECT id, file_name, file_path, directory_path, has_ocr_text, 'ocr' as match_type
-        FROM images 
-        WHERE has_ocr_text = TRUE 
-        AND id IN (
-            SELECT id FROM images 
-            WHERE ocr_text_path IS NOT NULL 
-            AND EXISTS (
-                SELECT 1 FROM (
-                    SELECT id, file_path FROM images WHERE id = images.id
-                ) img
-                WHERE img.file_path = images.file_path
-            )
-        )
-        AND id NOT IN (SELECT id FROM images WHERE file_name LIKE ?)
-        ORDER BY file_name 
-        LIMIT 25
-    """, (f'%{query}%')).fetchall()
+    try:
+        # Search by filename first (exact matches get priority)
+        filename_pattern = f'%{query}%'
+        exact_pattern = f'{query}%'
+        filename_results = conn.execute("""
+            SELECT id, file_name, file_path, directory_path, has_ocr_text, 'filename' as match_type
+            FROM images 
+            WHERE file_name LIKE ? 
+            ORDER BY 
+                CASE WHEN file_name LIKE ? THEN 1 ELSE 2 END,
+                file_name 
+            LIMIT 25
+        """, (filename_pattern, exact_pattern)).fetchall()
+        
+        # Search by OCR text content
+        ocr_results = conn.execute("""
+            SELECT id, file_name, file_path, directory_path, has_ocr_text, 'ocr' as match_type
+            FROM images 
+            WHERE has_ocr_text = TRUE 
+            AND file_name NOT LIKE ?
+            ORDER BY file_name 
+            LIMIT 25
+        """, (filename_pattern,)).fetchall()
+    except Exception as e:
+        conn.close()
+        return jsonify({'error': str(e), 'results': []})
     
     # For OCR text search, we need to check the actual text files
     ocr_text_results = []
@@ -450,8 +446,29 @@ def api_search():
             ocr_file_path = DATA_DIR / row['file_path'].replace(row['file_path'].split('.')[-1], 'txt')
             if ocr_file_path.exists():
                 ocr_text = ocr_file_path.read_text(encoding='utf-8', errors='ignore')
-                if query.lower() in ocr_text.lower():
-                    ocr_text_results.append(dict(row))
+                query_lower = query.lower()
+                ocr_text_lower = ocr_text.lower()
+                
+                if query_lower in ocr_text_lower:
+                    # Find the position of the match
+                    match_pos = ocr_text_lower.find(query_lower)
+                    
+                    # Extract context around the match (50 chars before and after)
+                    context_start = max(0, match_pos - 50)
+                    context_end = min(len(ocr_text), match_pos + len(query) + 50)
+                    excerpt = ocr_text[context_start:context_end]
+                    
+                    # Add ellipsis if we're not at the beginning/end
+                    if context_start > 0:
+                        excerpt = "..." + excerpt
+                    if context_end < len(ocr_text):
+                        excerpt = excerpt + "..."
+                    
+                    # Create result with excerpt
+                    result = dict(row)
+                    result['excerpt'] = excerpt
+                    result['match_position'] = match_pos
+                    ocr_text_results.append(result)
         except Exception as e:
             print(f"Error reading OCR file for {row['file_name']}: {e}")
             continue
@@ -491,6 +508,58 @@ def blog():
     """Blog listing page"""
     posts = load_blog_posts()
     return render_template('blog.html', posts=posts)
+
+
+@app.route('/blog/feed.xml')
+def blog_rss():
+    """RSS feed for blog posts"""
+    posts = load_blog_posts()
+    
+    # Generate RSS XML
+    rss_xml = f'''<?xml version="1.0" encoding="UTF-8"?>
+<rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom">
+    <channel>
+        <title>Epstein Documents Browser Blog</title>
+        <link>http://localhost:8080/blog</link>
+        <description>Updates and insights about the Epstein Documents Browser - an open-source document management system for congressional records.</description>
+        <language>en-us</language>
+        <lastBuildDate>{datetime.now().strftime('%a, %d %b %Y %H:%M:%S GMT')}</lastBuildDate>
+        <atom:link href="http://localhost:8080/blog/feed.xml" rel="self" type="application/rss+xml"/>
+        <generator>Epstein Documents Browser</generator>
+        <managingEditor>mark@rizzn.net (Mark Rizzn Hopkins)</managingEditor>
+        <webMaster>mark@rizzn.net (Mark Rizzn Hopkins)</webMaster>
+'''
+    
+    for post in posts:
+        # Convert date to RFC 2822 format
+        post_date = datetime.strptime(post['date'], '%Y-%m-%d').strftime('%a, %d %b %Y 00:00:00 GMT')
+        
+        # Clean content for RSS (remove markdown, basic HTML)
+        content = post['content']
+        # Convert markdown headers to HTML
+        content = content.replace('## ', '<h2>').replace('\n\n', '</h2>\n\n')
+        content = content.replace('### ', '<h3>').replace('\n\n', '</h3>\n\n')
+        content = content.replace('**', '<strong>').replace('**', '</strong>')
+        content = content.replace('*', '<em>').replace('*', '</em>')
+        content = content.replace('\n', '<br/>\n')
+        
+        rss_xml += f'''
+        <item>
+            <title>{post['title']}</title>
+            <link>http://localhost:8080/blog/{post['slug']}</link>
+            <description><![CDATA[{post['excerpt']}]]></description>
+            <pubDate>{post_date}</pubDate>
+            <guid isPermaLink="true">http://localhost:8080/blog/{post['slug']}</guid>
+            <author>mark@rizzn.net (Mark Rizzn Hopkins)</author>
+        </item>'''
+    
+    rss_xml += '''
+    </channel>
+</rss>'''
+    
+    response = make_response(rss_xml)
+    response.headers['Content-Type'] = 'application/rss+xml; charset=utf-8'
+    return response
 
 
 @app.route('/blog/<slug>')
