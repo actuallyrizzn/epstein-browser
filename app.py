@@ -487,6 +487,14 @@ def api_search():
         # Build the query
         where_clause = ' AND '.join(where_conditions) if where_conditions else '1=1'
         
+        # Calculate pagination
+        page = int(request.args.get('page', 1))
+        per_page = 50
+        offset = (page - 1) * per_page
+        
+        # Create params for main query
+        main_params = params.copy()
+        
         # Sort order
         if sort_by == 'filename':
             order_clause = 'ORDER BY file_name'
@@ -494,22 +502,6 @@ def api_search():
             order_clause = 'ORDER BY id'
         else:  # relevance
             order_clause = 'ORDER BY CASE WHEN file_name LIKE ? THEN 1 ELSE 2 END, file_name'
-        
-        # Get total count for pagination (without ordering parameters)
-        total_count = conn.execute(f"""
-            SELECT COUNT(*) as count
-            FROM images 
-            WHERE {where_clause}
-        """, params).fetchone()['count']
-        
-        # Calculate pagination
-        page = int(request.args.get('page', 1))
-        per_page = 50
-        offset = (page - 1) * per_page
-        
-        # Create separate params for main query (with ordering if needed)
-        main_params = params.copy()
-        if sort_by == 'relevance':
             main_params.insert(0, f'{query}%')
         
         filename_results = conn.execute(f"""
@@ -524,13 +516,22 @@ def api_search():
         ocr_text_results = []
         if search_type in ['all', 'ocr']:
             # Get all images with OCR text (no limit for comprehensive search)
-            ocr_candidates = conn.execute("""
-                SELECT id, file_name, file_path, directory_path, has_ocr_text
-                FROM images 
-                WHERE has_ocr_text = TRUE
-                AND file_name NOT LIKE ?
-                ORDER BY file_name 
-            """, (f'%{query}%',)).fetchall()
+            # Only exclude files that already matched filename search when doing 'all' search
+            if search_type == 'all':
+                ocr_candidates = conn.execute("""
+                    SELECT id, file_name, file_path, directory_path, has_ocr_text
+                    FROM images 
+                    WHERE has_ocr_text = TRUE
+                    AND file_name NOT LIKE ?
+                    ORDER BY file_name 
+                """, (f'%{query}%',)).fetchall()
+            else:  # OCR only search
+                ocr_candidates = conn.execute("""
+                    SELECT id, file_name, file_path, directory_path, has_ocr_text
+                    FROM images 
+                    WHERE has_ocr_text = TRUE
+                    ORDER BY file_name 
+                """).fetchall()
             
             # Check OCR text content
             for row in ocr_candidates:
@@ -586,17 +587,19 @@ def api_search():
         elif sort_by == 'id':
             all_results.sort(key=lambda x: x['id'])
         
-        # Calculate pagination metadata
-        total_pages = (total_count + per_page - 1) // per_page
+        # Apply pagination to combined results
+        start_idx = (page - 1) * per_page
+        end_idx = start_idx + per_page
+        paginated_results = all_results[start_idx:end_idx]
+        
+        # Calculate pagination metadata based on actual combined results
+        total_count = len(all_results)
+        total_pages = max(1, (total_count + per_page - 1) // per_page) if total_count > 0 else 1
         has_next = page < total_pages
         has_prev = page > 1
         
-        print(f"DEBUG: total_count={total_count}, page={page}, per_page={per_page}")
-        print(f"DEBUG: total_pages={total_pages}, has_next={has_next}, has_prev={has_prev}")
-        print(f"DEBUG: results_count={len(all_results)}")
-        
-        return jsonify({
-            'results': all_results,
+        response_data = {
+            'results': paginated_results,
             'pagination': {
                 'page': page,
                 'per_page': per_page,
@@ -605,7 +608,9 @@ def api_search():
                 'has_next': has_next,
                 'has_prev': has_prev
             }
-        })
+        }
+        
+        return jsonify(response_data)
         
     except Exception as e:
         conn.close()

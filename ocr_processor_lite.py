@@ -155,9 +155,26 @@ class TesseractOCRProcessor:
             full_path = DATA_DIR / file_path
             
             if not full_path.exists():
-                logger.warning(f"File not found: {full_path}")
-                self.update_database(image_id, False)
-                continue
+                # Try alternative file name without (1) suffix
+                alt_file_name = file_name.replace('(1)', '')
+                alt_path = DATA_DIR / file_path.replace(file_name, alt_file_name)
+                
+                if alt_path.exists():
+                    logger.info(f"Using alternative file name: {alt_path}")
+                    full_path = alt_path
+                else:
+                    logger.warning(f"File not found: {full_path} (also tried: {alt_path})")
+                    self.update_database(image_id, False)
+                    # Add to batch results for tracking
+                    batch_results.append({
+                        'id': image_id,
+                        'file_name': file_name,
+                        'text_length': 0,
+                        'processing_time': 0,
+                        'success': False,
+                        'error': 'File not found'
+                    })
+                    continue
             
             # Process with OCR
             start_time = time.time()
@@ -261,7 +278,7 @@ class TesseractOCRProcessor:
             # Batch summary
             successful = sum(1 for r in batch_results if r['success'])
             total_chars = sum(r['text_length'] for r in batch_results)
-            avg_time = sum(r['processing_time'] for r in batch_results) / len(batch_results)
+            avg_time = sum(r['processing_time'] for r in batch_results) / len(batch_results) if batch_results else 0
             
             logger.info(f"Batch complete: {successful}/{len(batch_results)} successful, "
                        f"{total_chars} total chars, {avg_time:.2f}s avg time")

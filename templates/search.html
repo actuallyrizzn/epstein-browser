@@ -672,12 +672,16 @@ function displayResults(data) {
     });
     
     // Store pagination data
-    paginationData = data.pagination;
+    paginationData = data.pagination || null;
     
     if (resultsCount) {
-        const startResult = (paginationData.page - 1) * paginationData.per_page + 1;
-        const endResult = Math.min(startResult + data.results.length - 1, paginationData.total_count);
-        resultsCount.textContent = `Showing ${startResult}-${endResult} of ${paginationData.total_count.toLocaleString()} results`;
+        if (paginationData) {
+            const startResult = (paginationData.page - 1) * paginationData.per_page + 1;
+            const endResult = Math.min(startResult + data.results.length - 1, paginationData.total_count);
+            resultsCount.textContent = `Showing ${startResult}-${endResult} of ${paginationData.total_count.toLocaleString()} results`;
+        } else {
+            resultsCount.textContent = `Found ${data.results.length} results`;
+        }
         console.log('Updated results count');
     } else {
         console.error('results-count element not found');
@@ -919,7 +923,7 @@ function updatePagination() {
     if (!paginationContainer || !prevBtn || !nextBtn || !paginationPages) return;
     
     // Show pagination if there are multiple pages
-    if (paginationData.total_pages > 1) {
+    if (paginationData && paginationData.total_pages > 1) {
         paginationContainer.style.display = 'block';
         
         // Update prev/next buttons

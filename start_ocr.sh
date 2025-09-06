@@ -174,8 +174,19 @@ except Exception as e:
 # Function to show logs
 show_logs() {
     if screen_exists; then
-        print_status "Showing logs for $APP_NAME (Ctrl+C to exit):"
-        screen -r "$SCREEN_NAME"
+        print_status "Showing recent logs for $APP_NAME:"
+        echo "=========================================="
+        # Get the last 50 lines from the screen session
+        screen -S "$SCREEN_NAME" -X hardcopy /tmp/ocr_logs.txt
+        if [ -f /tmp/ocr_logs.txt ]; then
+            tail -50 /tmp/ocr_logs.txt
+            rm -f /tmp/ocr_logs.txt
+        else
+            print_warning "Could not retrieve logs from screen session"
+        fi
+        echo "=========================================="
+        print_status "To view live logs: screen -r $SCREEN_NAME"
+        print_status "To detach from live view: Ctrl+A then D"
     else
         print_error "No screen session found for $APP_NAME"
     fi
