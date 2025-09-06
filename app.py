@@ -516,15 +516,16 @@ def blog_rss():
     posts = load_blog_posts()
     
     # Generate RSS XML
+    base_url = request.url_root.rstrip('/')
     rss_xml = f'''<?xml version="1.0" encoding="UTF-8"?>
 <rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom">
     <channel>
         <title>Epstein Documents Browser Blog</title>
-        <link>http://localhost:8080/blog</link>
+        <link>{base_url}/blog</link>
         <description>Updates and insights about the Epstein Documents Browser - an open-source document management system for congressional records.</description>
         <language>en-us</language>
         <lastBuildDate>{datetime.now().strftime('%a, %d %b %Y %H:%M:%S GMT')}</lastBuildDate>
-        <atom:link href="http://localhost:8080/blog/feed.xml" rel="self" type="application/rss+xml"/>
+        <atom:link href="{base_url}/blog/feed.xml" rel="self" type="application/rss+xml"/>
         <generator>Epstein Documents Browser</generator>
         <managingEditor>mark@rizzn.net (Mark Rizzn Hopkins)</managingEditor>
         <webMaster>mark@rizzn.net (Mark Rizzn Hopkins)</webMaster>
@@ -546,10 +547,10 @@ def blog_rss():
         rss_xml += f'''
         <item>
             <title>{post['title']}</title>
-            <link>http://localhost:8080/blog/{post['slug']}</link>
+            <link>{base_url}/blog/{post['slug']}</link>
             <description><![CDATA[{post['excerpt']}]]></description>
             <pubDate>{post_date}</pubDate>
-            <guid isPermaLink="true">http://localhost:8080/blog/{post['slug']}</guid>
+            <guid isPermaLink="true">{base_url}/blog/{post['slug']}</guid>
             <author>mark@rizzn.net (Mark Rizzn Hopkins)</author>
         </item>'''
     

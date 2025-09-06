@@ -286,13 +286,13 @@
             <h5>Example API Usage</h5>
             <div class="alert alert-light">
                 <pre><code># Get current statistics
-curl http://localhost:8080/api/stats
+curl {{ request.url_root }}api/stats
 
 # Search for documents
-curl "http://localhost:8080/api/search?q=DOJ-OGR"
+curl "{{ request.url_root }}api/search?q=DOJ-OGR"
 
 # Get first/last image IDs
-curl http://localhost:8080/api/first-image</code></pre>
+curl {{ request.url_root }}api/first-image</code></pre>
             </div>
         </div>
     </div>
