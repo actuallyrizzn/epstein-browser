@@ -23,8 +23,13 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 import sqlite3
 import os
+import json
+import markdown
+import time
+import uuid
+from datetime import datetime, timedelta
 from pathlib import Path
-from flask import Flask, render_template, request, jsonify, send_file, abort
+from flask import Flask, render_template, request, jsonify, send_file, abort, session, redirect, url_for, flash
 from PIL import Image
 import io
 from dotenv import load_dotenv
@@ -60,12 +65,152 @@ else:
     DEBUG_MODE = app.config['DEBUG']
     ENV_NAME = "Development"
 
+# Analytics middleware
+@app.before_request
+def before_request():
+    request.start_time = time.time()
+
+@app.after_request
+def after_request(response):
+    if hasattr(request, 'start_time'):
+        response_time = time.time() - request.start_time
+        track_analytics(request, response, response_time)
+    return response
+
 
 def get_db_connection():
     """Get database connection"""
     conn = sqlite3.connect(DB_PATH)
     conn.row_factory = sqlite3.Row
     return conn
+
+
+def init_analytics_table():
+    """Initialize analytics table if it doesn't exist"""
+    conn = get_db_connection()
+    cursor = conn.cursor()
+    
+    # Create analytics table
+    cursor.execute("""
+        CREATE TABLE IF NOT EXISTS analytics (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            timestamp DATETIME DEFAULT CURRENT_TIMESTAMP,
+            ip_address TEXT,
+            user_agent TEXT,
+            path TEXT,
+            referer TEXT,
+            method TEXT,
+            status_code INTEGER,
+            response_time REAL,
+            session_id TEXT
+        )
+    """)
+    
+    # Create indexes for better performance
+    cursor.execute("CREATE INDEX IF NOT EXISTS idx_analytics_timestamp ON analytics(timestamp)")
+    cursor.execute("CREATE INDEX IF NOT EXISTS idx_analytics_path ON analytics(path)")
+    cursor.execute("CREATE INDEX IF NOT EXISTS idx_analytics_ip ON analytics(ip_address)")
+    
+    conn.commit()
+    conn.close()
+
+# Initialize analytics table
+init_analytics_table()
+
+
+def track_analytics(request, response, response_time):
+    """Track analytics data for a request"""
+    try:
+        conn = get_db_connection()
+        cursor = conn.cursor()
+        
+        # Get or create session ID
+        if 'session_id' not in session:
+            session['session_id'] = str(uuid.uuid4())
+        
+        cursor.execute("""
+            INSERT INTO analytics 
+            (ip_address, user_agent, path, referer, method, status_code, response_time, session_id)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+        """, (
+            request.remote_addr,
+            request.headers.get('User-Agent', ''),
+            request.path,
+            request.headers.get('Referer', ''),
+            request.method,
+            response.status_code,
+            response_time,
+            session['session_id']
+        ))
+        
+        conn.commit()
+        conn.close()
+    except Exception as e:
+        print(f"Analytics tracking error: {e}")
+
+
+def get_analytics_data(days=7):
+    """Get analytics data for the specified number of days"""
+    conn = get_db_connection()
+    cursor = conn.cursor()
+    
+    # Get basic stats
+    cursor.execute("""
+        SELECT 
+            COUNT(*) as total_requests,
+            COUNT(DISTINCT session_id) as unique_visitors,
+            COUNT(DISTINCT session_id) as unique_sessions,
+            AVG(response_time) as avg_response_time
+        FROM analytics 
+        WHERE timestamp >= datetime('now', '-{} days')
+    """.format(days))
+    
+    stats = cursor.fetchone()
+    
+    # Get top pages
+    cursor.execute("""
+        SELECT path, COUNT(*) as views
+        FROM analytics 
+        WHERE timestamp >= datetime('now', '-{} days')
+        GROUP BY path
+        ORDER BY views DESC
+        LIMIT 10
+    """.format(days))
+    
+    top_pages = cursor.fetchall()
+    
+    # Get hourly distribution
+    cursor.execute("""
+        SELECT strftime('%H', timestamp) as hour, COUNT(*) as requests
+        FROM analytics 
+        WHERE timestamp >= datetime('now', '-{} days')
+        GROUP BY hour
+        ORDER BY hour
+    """.format(days))
+    
+    hourly_data = cursor.fetchall()
+    
+    # Get referrers
+    cursor.execute("""
+        SELECT referer, COUNT(*) as visits
+        FROM analytics 
+        WHERE timestamp >= datetime('now', '-{} days')
+        AND referer != ''
+        GROUP BY referer
+        ORDER BY visits DESC
+        LIMIT 10
+    """.format(days))
+    
+    referrers = cursor.fetchall()
+    
+    conn.close()
+    
+    return {
+        'stats': dict(stats),
+        'top_pages': [dict(row) for row in top_pages],
+        'hourly_data': [dict(row) for row in hourly_data],
+        'referrers': [dict(row) for row in referrers]
+    }
 
 
 def get_image_by_id(image_id):
@@ -106,6 +251,30 @@ def get_ocr_text(file_path):
             return ocr_file.read_text(encoding='utf-8')
         except:
             return None
+    return None
+
+
+def load_blog_posts():
+    """Load blog posts from JSON file"""
+    try:
+        with open('blog_posts.json', 'r', encoding='utf-8') as f:
+            posts = json.load(f)
+        # Sort by date (newest first)
+        posts.sort(key=lambda x: x['date'], reverse=True)
+        return posts
+    except FileNotFoundError:
+        return []
+    except Exception as e:
+        print(f"Error loading blog posts: {e}")
+        return []
+
+
+def get_blog_post(slug):
+    """Get a specific blog post by slug"""
+    posts = load_blog_posts()
+    for post in posts:
+        if post['slug'] == slug:
+            return post
     return None
 
 
@@ -276,6 +445,27 @@ def help_page():
     return render_template('help.html')
 
 
+@app.route('/blog')
+def blog():
+    """Blog listing page"""
+    posts = load_blog_posts()
+    return render_template('blog.html', posts=posts)
+
+
+@app.route('/blog/<slug>')
+def blog_post(slug):
+    """Individual blog post page"""
+    post = get_blog_post(slug)
+    if not post:
+        abort(404)
+    
+    # Process Markdown content
+    md = markdown.Markdown(extensions=['codehilite', 'fenced_code', 'tables'])
+    post['html_content'] = md.convert(post['content'])
+    
+    return render_template('blog_post.html', post=post)
+
+
 @app.route('/sitemap.xml')
 def sitemap():
     """Generate sitemap.xml for search engines"""
@@ -307,6 +497,70 @@ def sitemap():
 def robots():
     """Generate robots.txt for search engines"""
     return render_template('robots.txt'), 200, {'Content-Type': 'text/plain'}
+
+
+# Admin authentication
+def check_admin_auth():
+    """Check if user is authenticated as admin"""
+    return session.get('admin_logged_in', False)
+
+
+def require_admin_auth():
+    """Require admin authentication for protected routes"""
+    if not check_admin_auth():
+        flash('Admin authentication required', 'error')
+        return redirect(url_for('admin_login'))
+
+
+@app.route('/admin/login', methods=['GET', 'POST'])
+def admin_login():
+    """Admin login page"""
+    if request.method == 'POST':
+        password = request.form.get('password', '')
+        admin_password = os.environ.get('ADMIN_PASSWORD', 'abc123')
+        
+        if password == admin_password:
+            session['admin_logged_in'] = True
+            flash('Successfully logged in as admin', 'success')
+            return redirect(url_for('admin_dashboard'))
+        else:
+            flash('Invalid password', 'error')
+    
+    return render_template('admin_login.html')
+
+
+@app.route('/admin/logout')
+def admin_logout():
+    """Admin logout"""
+    session.pop('admin_logged_in', None)
+    flash('Successfully logged out', 'info')
+    return redirect(url_for('admin_login'))
+
+
+@app.route('/admin')
+def admin_dashboard():
+    """Admin dashboard with analytics"""
+    if not check_admin_auth():
+        return redirect(url_for('admin_login'))
+    
+    days = request.args.get('days', 7, type=int)
+    analytics_data = get_analytics_data(days)
+    
+    return render_template('admin_dashboard.html', 
+                         analytics=analytics_data, 
+                         days=days)
+
+
+@app.route('/admin/analytics')
+def admin_analytics():
+    """Raw analytics data API for admin"""
+    if not check_admin_auth():
+        return jsonify({'error': 'Unauthorized'}), 401
+    
+    days = request.args.get('days', 7, type=int)
+    analytics_data = get_analytics_data(days)
+    
+    return jsonify(analytics_data)
 
 
 if __name__ == '__main__':
