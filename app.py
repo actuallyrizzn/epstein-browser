@@ -370,6 +370,53 @@ def serve_image(file_path):
     return send_file(full_path)
 
 
+@app.route('/api/thumbnail/<int:image_id>')
+def serve_thumbnail(image_id):
+    """Serve thumbnail images for search results"""
+    try:
+        conn = get_db_connection()
+        image = conn.execute(
+            'SELECT file_path FROM images WHERE id = ?', (image_id,)
+        ).fetchone()
+        conn.close()
+        
+        if not image:
+            abort(404)
+        
+        # Construct full path
+        file_path = image[0].replace('%5C', '/').replace('\\', '/')
+        full_path = DATA_DIR / file_path
+        
+        # Check if file exists
+        if not full_path.exists():
+            abort(404)
+        
+        # Create thumbnail
+        try:
+            with Image.open(full_path) as img:
+                # Convert to RGB if necessary
+                if img.mode != 'RGB':
+                    img = img.convert('RGB')
+                
+                # Create thumbnail (300x200 max, maintaining aspect ratio)
+                img.thumbnail((300, 200), Image.Resampling.LANCZOS)
+                
+                # Create in-memory JPEG
+                img_io = io.BytesIO()
+                img.save(img_io, format='JPEG', quality=80, optimize=True)
+                img_io.seek(0)
+                
+                # Return JPEG thumbnail
+                return send_file(img_io, mimetype='image/jpeg')
+        except Exception as e:
+            app.logger.error(f"Error creating thumbnail: {e}")
+            abort(500)
+    
+    except Exception as e:
+        app.logger.error(f"Error serving thumbnail: {e}")
+        abort(500)
+
+
 @app.route('/api/stats')
 def api_stats():
     """Get statistics"""
@@ -404,83 +451,165 @@ def api_stats():
 
 @app.route('/api/search')
 def api_search():
-    """Search images by filename and OCR text content"""
+    """Search images by filename and OCR text content with advanced filtering"""
     query = request.args.get('q', '').strip()
+    search_type = request.args.get('type', 'all')  # all, filename, ocr
+    ocr_filter = request.args.get('ocr', 'all')    # all, with-ocr, without-ocr
+    sort_by = request.args.get('sort', 'relevance') # relevance, filename, id
+    
     if not query:
         return jsonify({'results': []})
     
     conn = get_db_connection()
     
     try:
-        # Search by filename first (exact matches get priority)
-        filename_pattern = f'%{query}%'
-        exact_pattern = f'{query}%'
-        filename_results = conn.execute("""
+        # Build base query with filters
+        where_conditions = []
+        params = []
+        
+        # OCR filter
+        if ocr_filter == 'with-ocr':
+            where_conditions.append('has_ocr_text = TRUE')
+        elif ocr_filter == 'without-ocr':
+            where_conditions.append('has_ocr_text = FALSE')
+        
+        # Search type and query
+        if search_type == 'filename':
+            where_conditions.append('file_name LIKE ?')
+            params.append(f'%{query}%')
+        elif search_type == 'ocr':
+            where_conditions.append('has_ocr_text = TRUE')
+            # We'll filter OCR results later
+        else:  # all
+            where_conditions.append('file_name LIKE ?')
+            params.append(f'%{query}%')
+        
+        # Build the query
+        where_clause = ' AND '.join(where_conditions) if where_conditions else '1=1'
+        
+        # Sort order
+        if sort_by == 'filename':
+            order_clause = 'ORDER BY file_name'
+        elif sort_by == 'id':
+            order_clause = 'ORDER BY id'
+        else:  # relevance
+            order_clause = 'ORDER BY CASE WHEN file_name LIKE ? THEN 1 ELSE 2 END, file_name'
+        
+        # Get total count for pagination (without ordering parameters)
+        total_count = conn.execute(f"""
+            SELECT COUNT(*) as count
+            FROM images 
+            WHERE {where_clause}
+        """, params).fetchone()['count']
+        
+        # Calculate pagination
+        page = int(request.args.get('page', 1))
+        per_page = 50
+        offset = (page - 1) * per_page
+        
+        # Create separate params for main query (with ordering if needed)
+        main_params = params.copy()
+        if sort_by == 'relevance':
+            main_params.insert(0, f'{query}%')
+        
+        filename_results = conn.execute(f"""
             SELECT id, file_name, file_path, directory_path, has_ocr_text, 'filename' as match_type
             FROM images 
-            WHERE file_name LIKE ? 
-            ORDER BY 
-                CASE WHEN file_name LIKE ? THEN 1 ELSE 2 END,
-                file_name 
-            LIMIT 25
-        """, (filename_pattern, exact_pattern)).fetchall()
+            WHERE {where_clause}
+            {order_clause}
+            LIMIT ? OFFSET ?
+        """, main_params + [per_page, offset]).fetchall()
         
-        # Search by OCR text content
-        ocr_results = conn.execute("""
-            SELECT id, file_name, file_path, directory_path, has_ocr_text, 'ocr' as match_type
-            FROM images 
-            WHERE has_ocr_text = TRUE 
-            AND file_name NOT LIKE ?
-            ORDER BY file_name 
-            LIMIT 25
-        """, (filename_pattern,)).fetchall()
+        # If searching all content or OCR only, also search OCR text
+        ocr_text_results = []
+        if search_type in ['all', 'ocr']:
+            # Get all images with OCR text (no limit for comprehensive search)
+            ocr_candidates = conn.execute("""
+                SELECT id, file_name, file_path, directory_path, has_ocr_text
+                FROM images 
+                WHERE has_ocr_text = TRUE
+                AND file_name NOT LIKE ?
+                ORDER BY file_name 
+            """, (f'%{query}%',)).fetchall()
+            
+            # Check OCR text content
+            for row in ocr_candidates:
+                try:
+                    # Read the OCR text file
+                    ocr_file_path = DATA_DIR / row['file_path'].replace(row['file_path'].split('.')[-1], 'txt')
+                    if ocr_file_path.exists():
+                        ocr_text = ocr_file_path.read_text(encoding='utf-8', errors='ignore')
+                        query_lower = query.lower()
+                        ocr_text_lower = ocr_text.lower()
+                        
+                        if query_lower in ocr_text_lower:
+                            # Find the position of the match
+                            match_pos = ocr_text_lower.find(query_lower)
+                            
+                            # Extract context around the match (100 chars before and after)
+                            context_start = max(0, match_pos - 100)
+                            context_end = min(len(ocr_text), match_pos + len(query) + 100)
+                            excerpt = ocr_text[context_start:context_end]
+                            
+                            # Add ellipsis if we're not at the beginning/end
+                            if context_start > 0:
+                                excerpt = "..." + excerpt
+                            if context_end < len(ocr_text):
+                                excerpt = excerpt + "..."
+                            
+                            # Create result with excerpt
+                            result = dict(row)
+                            result['excerpt'] = excerpt
+                            result['match_type'] = 'ocr'
+                            result['match_position'] = match_pos
+                            ocr_text_results.append(result)
+                except Exception as e:
+                    print(f"Error reading OCR file for {row['file_name']}: {e}")
+                    continue
+        
+        conn.close()
+        
+        # Combine results based on search type
+        if search_type == 'filename':
+            all_results = list(filename_results)
+        elif search_type == 'ocr':
+            all_results = ocr_text_results
+        else:  # all
+            all_results = list(filename_results) + ocr_text_results
+        
+        # Sort combined results if needed
+        if sort_by == 'relevance' and search_type == 'all':
+            # Filename matches first, then OCR matches
+            pass  # Already ordered correctly
+        elif sort_by == 'filename':
+            all_results.sort(key=lambda x: x['file_name'])
+        elif sort_by == 'id':
+            all_results.sort(key=lambda x: x['id'])
+        
+        # Calculate pagination metadata
+        total_pages = (total_count + per_page - 1) // per_page
+        has_next = page < total_pages
+        has_prev = page > 1
+        
+        print(f"DEBUG: total_count={total_count}, page={page}, per_page={per_page}")
+        print(f"DEBUG: total_pages={total_pages}, has_next={has_next}, has_prev={has_prev}")
+        print(f"DEBUG: results_count={len(all_results)}")
+        
+        return jsonify({
+            'results': all_results,
+            'pagination': {
+                'page': page,
+                'per_page': per_page,
+                'total_count': total_count,
+                'total_pages': total_pages,
+                'has_next': has_next,
+                'has_prev': has_prev
+            }
+        })
+        
     except Exception as e:
         conn.close()
         return jsonify({'error': str(e), 'results': []})
-    
-    # For OCR text search, we need to check the actual text files
-    ocr_text_results = []
-    for row in ocr_results:
-        try:
-            # Read the OCR text file
-            ocr_file_path = DATA_DIR / row['file_path'].replace(row['file_path'].split('.')[-1], 'txt')
-            if ocr_file_path.exists():
-                ocr_text = ocr_file_path.read_text(encoding='utf-8', errors='ignore')
-                query_lower = query.lower()
-                ocr_text_lower = ocr_text.lower()
-                
-                if query_lower in ocr_text_lower:
-                    # Find the position of the match
-                    match_pos = ocr_text_lower.find(query_lower)
-                    
-                    # Extract context around the match (50 chars before and after)
-                    context_start = max(0, match_pos - 50)
-                    context_end = min(len(ocr_text), match_pos + len(query) + 50)
-                    excerpt = ocr_text[context_start:context_end]
-                    
-                    # Add ellipsis if we're not at the beginning/end
-                    if context_start > 0:
-                        excerpt = "..." + excerpt
-                    if context_end < len(ocr_text):
-                        excerpt = excerpt + "..."
-                    
-                    # Create result with excerpt
-                    result = dict(row)
-                    result['excerpt'] = excerpt
-                    result['match_position'] = match_pos
-                    ocr_text_results.append(result)
-        except Exception as e:
-            print(f"Error reading OCR file for {row['file_name']}: {e}")
-            continue
-    
-    conn.close()
-    
-    # Combine results, filename matches first
-    all_results = list(filename_results) + ocr_text_results
-    
-    return jsonify({
-        'results': [dict(row) for row in all_results[:50]]
-    })
 
 
 @app.route('/api/first-image')
@@ -496,6 +625,16 @@ def api_first_image():
         'last_id': last_id
     })
 
+
+@app.route('/search')
+def search_page():
+    """Advanced search page"""
+    conn = get_db_connection()
+    total_images = conn.execute('SELECT COUNT(*) FROM images').fetchone()[0]
+    conn.close()
+    
+    query = request.args.get('q', '')
+    return render_template('search.html', total_images=total_images, query=query)
 
 @app.route('/help')
 def help_page():

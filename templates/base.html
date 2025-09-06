@@ -84,6 +84,76 @@
             font-weight: bold;
             color: #007bff;
         }
+        
+        /* Mobile responsive improvements */
+        @media (max-width: 768px) {
+            .navbar-brand {
+                font-size: 1.1rem;
+            }
+            .container {
+                padding-left: 15px;
+                padding-right: 15px;
+            }
+            .stats-card {
+                padding: 15px;
+                margin-bottom: 15px;
+            }
+            .stat-number {
+                font-size: 1.5em;
+            }
+            /* Ensure proper spacing on mobile */
+            main.container {
+                margin-top: 1rem !important;
+            }
+        }
+        
+        @media (max-width: 576px) {
+            .navbar-brand {
+                font-size: 1rem;
+            }
+            .stats-card {
+                padding: 10px;
+            }
+            .stat-number {
+                font-size: 1.3em;
+            }
+        }
+        
+        /* Mobile navigation improvements */
+        .navbar-collapse {
+            margin-top: 10px;
+        }
+        
+        @media (min-width: 992px) {
+            .navbar-collapse {
+                margin-top: 0;
+            }
+        }
+        
+        /* Mobile-friendly buttons and touch targets */
+        @media (max-width: 768px) {
+            .btn {
+                min-height: 44px; /* iOS recommended touch target size */
+                padding: 12px 16px;
+            }
+            
+            .btn-lg {
+                min-height: 48px;
+                padding: 14px 20px;
+            }
+            
+            .card-body {
+                padding: 1rem;
+            }
+            
+            .input-group .form-control {
+                min-height: 44px;
+            }
+            
+            .input-group .btn {
+                min-height: 44px;
+            }
+        }
     </style>
     {% block extra_css %}{% endblock %}
     {% block extra_head %}{% endblock %}
@@ -94,22 +164,35 @@
         <div class="container">
             <a class="navbar-brand" href="{{ url_for('index') }}">
                 <i class="fas fa-file-alt me-2"></i>
-                Epstein Documents Browser
+                <span class="d-none d-sm-inline">Epstein Documents Browser</span>
+                <span class="d-inline d-sm-none">Epstein Docs</span>
             </a>
             
-            <div class="navbar-nav ms-auto">
-                <a class="nav-link" href="{{ url_for('index') }}">
-                    <i class="fas fa-home me-1"></i>Home
-                </a>
-                <a class="nav-link" href="{{ url_for('blog') }}">
-                    <i class="fas fa-newspaper me-1"></i>Blog
-                </a>
-                <a class="nav-link" href="{{ url_for('help_page') }}">
-                    <i class="fas fa-question-circle me-1"></i>Help
-                </a>
-                <a class="nav-link" href="{{ url_for('api_stats') }}" target="_blank">
-                    <i class="fas fa-chart-bar me-1"></i>Stats
-                </a>
+            <!-- Mobile hamburger button -->
+            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav" 
+                    aria-controls="navbarNav" aria-expanded="false" aria-label="Toggle navigation">
+                <span class="navbar-toggler-icon"></span>
+            </button>
+            
+            <!-- Collapsible navigation menu -->
+            <div class="collapse navbar-collapse" id="navbarNav">
+                <div class="navbar-nav ms-auto">
+                    <a class="nav-link" href="{{ url_for('index') }}">
+                        <i class="fas fa-home me-1"></i>Home
+                    </a>
+                    <a class="nav-link" href="{{ url_for('search_page') }}">
+                        <i class="fas fa-search me-1"></i>Search
+                    </a>
+                    <a class="nav-link" href="{{ url_for('blog') }}">
+                        <i class="fas fa-newspaper me-1"></i>Blog
+                    </a>
+                    <a class="nav-link" href="{{ url_for('help_page') }}">
+                        <i class="fas fa-question-circle me-1"></i>Help
+                    </a>
+                    <a class="nav-link" href="{{ url_for('api_stats') }}" target="_blank">
+                        <i class="fas fa-chart-bar me-1"></i>Stats
+                    </a>
+                </div>
             </div>
         </div>
     </nav>

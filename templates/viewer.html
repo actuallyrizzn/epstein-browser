@@ -210,6 +210,107 @@
         .loading.show {
             display: block;
         }
+        
+        /* Mobile responsive improvements */
+        @media (max-width: 768px) {
+            .top-bar {
+                padding: 10px 15px;
+                flex-direction: column;
+                gap: 10px;
+            }
+            
+            .document-info {
+                flex-direction: column;
+                align-items: flex-start;
+                gap: 10px;
+                width: 100%;
+            }
+            
+            .document-info h5 {
+                font-size: 1rem;
+                word-break: break-word;
+            }
+            
+            .progress-bar {
+                width: 100%;
+                max-width: 300px;
+            }
+            
+            .nav-buttons {
+                display: flex;
+                gap: 10px;
+                width: 100%;
+                justify-content: flex-end;
+            }
+            
+            .nav-btn {
+                padding: 8px 12px;
+                font-size: 0.9rem;
+            }
+            
+            .main-content {
+                flex-direction: column;
+            }
+            
+            .text-panel {
+                width: 100%;
+                max-height: 300px;
+                border-left: none;
+                border-top: 1px solid #34495e;
+                order: 2;
+            }
+            
+            .image-panel {
+                order: 1;
+                padding: 10px;
+                min-height: 50vh;
+            }
+            
+            .bottom-bar {
+                padding: 10px 15px;
+                flex-direction: column;
+                gap: 10px;
+            }
+            
+            .page-controls {
+                flex-wrap: wrap;
+                justify-content: center;
+                gap: 10px;
+            }
+            
+            .zoom-controls {
+                justify-content: center;
+            }
+        }
+        
+        @media (max-width: 576px) {
+            .top-bar {
+                padding: 8px 10px;
+            }
+            
+            .document-info h5 {
+                font-size: 0.9rem;
+            }
+            
+            .nav-btn {
+                padding: 6px 10px;
+                font-size: 0.8rem;
+            }
+            
+            .text-panel {
+                padding: 15px;
+                max-height: 250px;
+            }
+            
+            .text-content {
+                padding: 15px;
+                font-size: 0.9rem;
+            }
+            
+            .bottom-bar {
+                padding: 8px 10px;
+            }
+        }
     </style>
 </head>
 <body>
