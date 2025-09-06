@@ -276,6 +276,39 @@ def help_page():
     return render_template('help.html')
 
 
+@app.route('/sitemap.xml')
+def sitemap():
+    """Generate sitemap.xml for search engines"""
+    from datetime import datetime
+    
+    # Get some sample document data for sitemap
+    conn = get_db_connection()
+    sample_docs = conn.execute('''
+        SELECT id, file_path, file_name 
+        FROM images 
+        ORDER BY id 
+        LIMIT 100
+    ''').fetchall()
+    conn.close()
+    
+    # Prepare data for template
+    image_paths = [doc['file_path'] for doc in sample_docs]
+    image_names = [doc['file_name'] for doc in sample_docs]
+    total_images = get_total_images()
+    
+    return render_template('sitemap.xml', 
+                         moment=lambda: datetime.now(),
+                         image_paths=image_paths,
+                         image_names=image_names,
+                         total_images=total_images), 200, {'Content-Type': 'application/xml'}
+
+
+@app.route('/robots.txt')
+def robots():
+    """Generate robots.txt for search engines"""
+    return render_template('robots.txt'), 200, {'Content-Type': 'text/plain'}
+
+
 if __name__ == '__main__':
     print(f"🚀 Starting Epstein Documents Browser ({ENV_NAME})...")
     print(f"📖 Browse: http://localhost:8080")
