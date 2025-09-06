@@ -115,6 +115,17 @@ restart_app() {
     start_app
 }
 
+# Function to start app only if not already running
+start_if_missing() {
+    if screen_exists && app_running; then
+        print_status "$APP_NAME is already running in screen session: $SCREEN_NAME"
+        return 0
+    else
+        print_status "$APP_NAME not running, starting..."
+        start_app
+    fi
+}
+
 # Function to show status
 show_status() {
     if screen_exists; then
@@ -145,6 +156,9 @@ case "$1" in
     start)
         start_app
         ;;
+    start-if-missing)
+        start_if_missing
+        ;;
     stop)
         stop_app
         ;;
@@ -158,14 +172,15 @@ case "$1" in
         show_logs
         ;;
     *)
-        echo "Usage: $0 {start|stop|restart|status|logs}"
+        echo "Usage: $0 {start|start-if-missing|stop|restart|status|logs}"
         echo ""
         echo "Commands:"
-        echo "  start   - Start the application in a screen session"
-        echo "  stop    - Stop the application and kill screen session"
-        echo "  restart - Restart the application"
-        echo "  status  - Show application status"
-        echo "  logs    - View application logs in screen session"
+        echo "  start            - Start the application in a screen session"
+        echo "  start-if-missing - Start only if not already running (for crontab)"
+        echo "  stop             - Stop the application and kill screen session"
+        echo "  restart          - Restart the application"
+        echo "  status           - Show application status"
+        echo "  logs             - View application logs in screen session"
         exit 1
         ;;
 esac

@@ -106,7 +106,7 @@
             <div class="card-body">
                 <h5><i class="fas fa-search me-2"></i>Search Documents</h5>
                 <div class="input-group">
-                    <input type="text" class="form-control" id="search-input" placeholder="Search by filename...">
+                    <input type="text" class="form-control" id="search-input" placeholder="Search by filename or document content...">
                     <button class="btn btn-primary" onclick="searchDocuments()">
                         <i class="fas fa-search me-1"></i>Search
                     </button>
@@ -187,10 +187,15 @@
 
                 let html = '<div class="list-group">';
                 data.results.forEach(result => {
+                    const matchType = result.match_type || 'filename';
+                    const matchBadge = matchType === 'filename' ? 
+                        '<span class="badge bg-primary me-2">Filename</span>' : 
+                        '<span class="badge bg-success me-2">Content</span>';
+                    
                     html += `
                         <a href="/view/${result.id}" class="list-group-item list-group-item-action">
                             <div class="d-flex w-100 justify-content-between">
-                                <h6 class="mb-1">${result.file_name}</h6>
+                                <h6 class="mb-1">${result.file_name} ${matchBadge}</h6>
                                 <small>${result.has_ocr_text ? '<i class="fas fa-file-text text-success"></i>' : '<i class="fas fa-clock text-muted"></i>'}</small>
                             </div>
                             <p class="mb-1 text-muted">${result.directory_path}</p>

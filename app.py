@@ -404,24 +404,65 @@ def api_stats():
 
 @app.route('/api/search')
 def api_search():
-    """Search images by filename"""
+    """Search images by filename and OCR text content"""
     query = request.args.get('q', '').strip()
     if not query:
         return jsonify({'results': []})
     
     conn = get_db_connection()
-    results = conn.execute("""
-        SELECT id, file_name, file_path, directory_path, has_ocr_text
+    
+    # Search by filename first (exact matches get priority)
+    filename_results = conn.execute("""
+        SELECT id, file_name, file_path, directory_path, has_ocr_text, 'filename' as match_type
         FROM images 
         WHERE file_name LIKE ? 
+        ORDER BY 
+            CASE WHEN file_name LIKE ? THEN 1 ELSE 2 END,
+            file_name 
+        LIMIT 25
+    """, (f'%{query}%', f'{query}%')).fetchall()
+    
+    # Search by OCR text content
+    ocr_results = conn.execute("""
+        SELECT id, file_name, file_path, directory_path, has_ocr_text, 'ocr' as match_type
+        FROM images 
+        WHERE has_ocr_text = TRUE 
+        AND id IN (
+            SELECT id FROM images 
+            WHERE ocr_text_path IS NOT NULL 
+            AND EXISTS (
+                SELECT 1 FROM (
+                    SELECT id, file_path FROM images WHERE id = images.id
+                ) img
+                WHERE img.file_path = images.file_path
+            )
+        )
+        AND id NOT IN (SELECT id FROM images WHERE file_name LIKE ?)
         ORDER BY file_name 
-        LIMIT 50
-    """, (f'%{query}%',)).fetchall()
+        LIMIT 25
+    """, (f'%{query}%')).fetchall()
+    
+    # For OCR text search, we need to check the actual text files
+    ocr_text_results = []
+    for row in ocr_results:
+        try:
+            # Read the OCR text file
+            ocr_file_path = DATA_DIR / row['file_path'].replace(row['file_path'].split('.')[-1], 'txt')
+            if ocr_file_path.exists():
+                ocr_text = ocr_file_path.read_text(encoding='utf-8', errors='ignore')
+                if query.lower() in ocr_text.lower():
+                    ocr_text_results.append(dict(row))
+        except Exception as e:
+            print(f"Error reading OCR file for {row['file_name']}: {e}")
+            continue
     
     conn.close()
     
+    # Combine results, filename matches first
+    all_results = list(filename_results) + ocr_text_results
+    
     return jsonify({
-        'results': [dict(row) for row in results]
+        'results': [dict(row) for row in all_results[:50]]
     })
 
 
