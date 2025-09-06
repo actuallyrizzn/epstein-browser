@@ -224,7 +224,7 @@
         <!-- Bottom Bar -->
         <div class="bottom-bar">
             <div class="page-controls">
-                <a href="{{ url_for('view_image', image_id=1) }}" class="nav-btn" title="First page">
+                <a href="{{ url_for('view_image', image_id=1) }}" class="nav-btn" title="First page" onclick="goToFirst()">
                     <i class="fas fa-angle-double-left"></i>
                 </a>
                 {% if prev_id %}
@@ -248,7 +248,7 @@
                     Next<i class="fas fa-chevron-right"></i>
                 </button>
                 {% endif %}
-                <a href="{{ url_for('view_image', image_id=total_images) }}" class="nav-btn" title="Last page">
+                <a href="{{ url_for('view_image', image_id=total_images) }}" class="nav-btn" title="Last page" onclick="goToLast()">
                     <i class="fas fa-angle-double-right"></i>
                 </a>
             </div>
@@ -300,6 +300,33 @@
             document.getElementById('loading').classList.add('show');
         }
         
+        // Navigation functions
+        function goToFirst() {
+            // Get the actual first image ID from the server
+            fetch('/api/first-image')
+                .then(response => response.json())
+                .then(data => {
+                    window.location.href = `/view/${data.first_id}`;
+                })
+                .catch(() => {
+                    // Fallback to ID 1 if API fails
+                    window.location.href = '/view/1';
+                });
+        }
+        
+        function goToLast() {
+            // Get the actual last image ID from the server
+            fetch('/api/first-image')
+                .then(response => response.json())
+                .then(data => {
+                    window.location.href = `/view/${data.last_id}`;
+                })
+                .catch(() => {
+                    // Fallback to total_images if API fails
+                    window.location.href = '/view/{{ total_images }}';
+                });
+        }
+
         // Keyboard navigation
         document.addEventListener('keydown', function(e) {
             switch(e.key) {
@@ -314,10 +341,10 @@
                     {% endif %}
                     break;
                 case 'Home':
-                    window.location.href = '{{ url_for("view_image", image_id=1) }}';
+                    goToFirst();
                     break;
                 case 'End':
-                    window.location.href = '{{ url_for("view_image", image_id=total_images) }}';
+                    goToLast();
                     break;
                 case 'Escape':
                     if (document.fullscreenElement) {

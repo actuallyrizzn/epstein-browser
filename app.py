@@ -116,8 +116,13 @@ def index():
     if total_images == 0:
         return render_template('index.html', total_images=0)
     
+    # Get first available image ID
+    conn = get_db_connection()
+    first_id = conn.execute('SELECT MIN(id) FROM images').fetchone()[0]
+    conn.close()
+    
     # Get first image
-    first_image = get_image_by_id(1)
+    first_image = get_image_by_id(first_id)
     return render_template('index.html', 
                          total_images=total_images,
                          first_image=first_image)
@@ -249,6 +254,26 @@ def api_search():
     return jsonify({
         'results': [dict(row) for row in results]
     })
+
+
+@app.route('/api/first-image')
+def api_first_image():
+    """Get the first available image ID"""
+    conn = get_db_connection()
+    first_id = conn.execute('SELECT MIN(id) FROM images').fetchone()[0]
+    last_id = conn.execute('SELECT MAX(id) FROM images').fetchone()[0]
+    conn.close()
+    
+    return jsonify({
+        'first_id': first_id,
+        'last_id': last_id
+    })
+
+
+@app.route('/help')
+def help_page():
+    """Help and documentation page"""
+    return render_template('help.html')
 
 
 if __name__ == '__main__':

@@ -41,6 +41,9 @@
                 <a class="nav-link" href="{{ url_for('index') }}">
                     <i class="fas fa-home me-1"></i>Home
                 </a>
+                <a class="nav-link" href="{{ url_for('help_page') }}">
+                    <i class="fas fa-question-circle me-1"></i>Help
+                </a>
                 <a class="nav-link" href="{{ url_for('api_stats') }}" target="_blank">
                     <i class="fas fa-chart-bar me-1"></i>Stats
                 </a>
@@ -57,7 +60,8 @@
     <footer class="footer py-4 mt-5 bg-light">
         <div class="container text-center">
             <small class="text-muted">
-                Epstein Documents Browser - Congressional Records
+                Epstein Documents Browser - Congressional Records<br>
+                Created by <a href="https://rizzn.net" target="_blank" class="text-decoration-none">Mark Rizzn Hopkins</a>
             </small>
         </div>
     </footer>

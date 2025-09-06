@@ -25,7 +25,7 @@
                 <p class="card-text mb-3">
                     Browse through {{ "{:,}".format(total_images) }} congressional documents with Archive.org-style navigation
                 </p>
-                <a href="{{ url_for('view_image', image_id=1) }}" class="btn btn-light btn-lg">
+                <a href="{{ url_for('view_image', image_id=first_image.id) }}" class="btn btn-light btn-lg">
                     <i class="fas fa-book-open me-2"></i>
                     Start Reading
                 </a>
@@ -64,17 +64,17 @@
                 <h5><i class="fas fa-compass me-2"></i>Quick Navigation</h5>
                 <div class="row">
                     <div class="col-md-3 mb-2">
-                        <a href="{{ url_for('view_image', image_id=1) }}" class="btn btn-outline-primary w-100">
+                        <a href="{{ url_for('view_image', image_id=first_image.id) }}" class="btn btn-outline-primary w-100">
                             <i class="fas fa-angle-double-left me-2"></i>First Document
                         </a>
                     </div>
                     <div class="col-md-3 mb-2">
-                        <a href="{{ url_for('view_image', image_id=total_images//2) }}" class="btn btn-outline-primary w-100">
+                        <a href="{{ url_for('view_image', image_id=first_image.id + total_images//2) }}" class="btn btn-outline-primary w-100">
                             <i class="fas fa-equals me-2"></i>Middle
                         </a>
                     </div>
                     <div class="col-md-3 mb-2">
-                        <a href="{{ url_for('view_image', image_id=total_images) }}" class="btn btn-outline-primary w-100">
+                        <a href="{{ url_for('view_image', image_id=first_image.id + total_images - 1) }}" class="btn btn-outline-primary w-100">
                             <i class="fas fa-angle-double-right me-2"></i>Last Document
                         </a>
                     </div>
@@ -155,7 +155,9 @@
     // Random document function
     function randomDocument() {
         const totalImages = {{ total_images }};
-        const randomId = Math.floor(Math.random() * totalImages) + 1;
+        const firstId = {{ first_image.id }};
+        const lastId = firstId + totalImages - 1;
+        const randomId = Math.floor(Math.random() * totalImages) + firstId;
         window.location.href = `/view/${randomId}`;
     }
 
