@@ -76,7 +76,11 @@ def get_ocr_text(file_path):
     """Get OCR text for an image"""
     # Convert backslashes to forward slashes for cross-platform compatibility
     file_path = file_path.replace('\\', '/')
-    ocr_file = DATA_DIR / file_path.replace(file_path.split('.')[-1], 'txt')
+    
+    # Create the OCR text file path by replacing the extension with .txt
+    ocr_file = DATA_DIR / file_path
+    ocr_file = ocr_file.with_suffix('.txt')
+    
     if ocr_file.exists():
         try:
             return ocr_file.read_text(encoding='utf-8')
