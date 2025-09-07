@@ -33,6 +33,7 @@ from flask import Flask, render_template, request, jsonify, send_file, abort, se
 from PIL import Image
 import io
 from dotenv import load_dotenv
+from collections import defaultdict, deque
 
 # Load environment variables from .env file
 load_dotenv()
@@ -64,6 +65,85 @@ else:
     PORT = int(os.environ.get('PORT', '8080'))
     DEBUG_MODE = app.config['DEBUG']
     ENV_NAME = "Development"
+
+# Rate Limiter
+class RateLimiter:
+    def __init__(self):
+        self.requests = defaultdict(lambda: defaultdict(lambda: deque()))
+        self.limits = {
+            'search': (60, 60),    # 60 requests per 60 seconds
+            'image': (200, 60),    # 200 requests per 60 seconds  
+            'stats': (300, 60),    # 300 requests per 60 seconds
+            'default': (100, 60),  # 100 requests per 60 seconds
+        }
+    
+    def is_allowed(self, ip, endpoint_type='default'):
+        now = time.time()
+        requests = self.requests[ip][endpoint_type]
+        
+        # Clean old requests outside the window
+        limit, window = self.limits.get(endpoint_type, self.limits['default'])
+        while requests and now - requests[0] > window:
+            requests.popleft()
+        
+        if len(requests) >= limit:
+            return False, limit, window
+        
+        requests.append(now)
+        return True, limit, window
+    
+    def get_remaining(self, ip, endpoint_type='default'):
+        now = time.time()
+        requests = self.requests[ip][endpoint_type]
+        limit, window = self.limits.get(endpoint_type, self.limits['default'])
+        
+        # Clean old requests
+        while requests and now - requests[0] > window:
+            requests.popleft()
+        
+        return max(0, limit - len(requests))
+
+# Initialize rate limiter
+rate_limiter = RateLimiter()
+
+# Rate limiting decorator
+def rate_limit(endpoint_type='default'):
+    def decorator(f):
+        def decorated_function(*args, **kwargs):
+            client_ip = request.remote_addr
+            allowed, limit, window = rate_limiter.is_allowed(client_ip, endpoint_type)
+            
+            if not allowed:
+                remaining = rate_limiter.get_remaining(client_ip, endpoint_type)
+                reset_time = int(time.time() + window)
+                
+                response = make_response(jsonify({
+                    'error': 'Rate limit exceeded',
+                    'message': f'Too many requests. Limit: {limit} requests per {window} seconds',
+                    'retry_after': window
+                }), 429)
+                
+                response.headers['X-RateLimit-Limit'] = str(limit)
+                response.headers['X-RateLimit-Remaining'] = str(remaining)
+                response.headers['X-RateLimit-Reset'] = str(reset_time)
+                response.headers['Retry-After'] = str(window)
+                
+                return response
+            
+            # Add rate limit headers to successful responses
+            remaining = rate_limiter.get_remaining(client_ip, endpoint_type)
+            reset_time = int(time.time() + window)
+            
+            result = f(*args, **kwargs)
+            if hasattr(result, 'headers'):
+                result.headers['X-RateLimit-Limit'] = str(limit)
+                result.headers['X-RateLimit-Remaining'] = str(remaining)
+                result.headers['X-RateLimit-Reset'] = str(reset_time)
+            
+            return result
+        decorated_function.__name__ = f.__name__
+        return decorated_function
+    return decorator
 
 # Analytics middleware
 @app.before_request
@@ -393,6 +473,7 @@ def view_image(image_id):
 
 
 @app.route('/image/<path:file_path>')
+@rate_limit('image')
 def serve_image(file_path):
     """Serve image files"""
     # Convert URL-encoded backslashes back to forward slashes for cross-platform compatibility
@@ -435,6 +516,7 @@ def serve_image(file_path):
 
 
 @app.route('/api/thumbnail/<int:image_id>')
+@rate_limit('image')
 def serve_thumbnail(image_id):
     """Serve thumbnail images for search results"""
     try:
@@ -482,6 +564,7 @@ def serve_thumbnail(image_id):
 
 
 @app.route('/api/stats')
+@rate_limit('stats')
 def api_stats():
     """Get statistics"""
     conn = get_db_connection()
@@ -514,6 +597,7 @@ def api_stats():
 
 
 @app.route('/api/search')
+@rate_limit('search')
 def api_search():
     """Search images by filename and OCR text content with advanced filtering"""
     query = request.args.get('q', '').strip()
@@ -685,6 +769,7 @@ def api_search():
 
 
 @app.route('/api/first-image')
+@rate_limit('stats')
 def api_first_image():
     """Get the first available image ID"""
     conn = get_db_connection()
