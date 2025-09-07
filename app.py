@@ -175,14 +175,19 @@ def _get_raw_db_connection():
 
 def get_db_connection():
     """Get database connection with initialization."""
-    # Ensure database is initialized
-    init_database()
-    return _get_raw_db_connection()
-
-
-def init_database():
-    """Initialize all database tables if they don't exist"""
+    # Get a raw connection first
     conn = _get_raw_db_connection()
+    # Initialize database with the same connection
+    init_database(conn)
+    return conn
+
+
+def init_database(conn=None):
+    """Initialize all database tables if they don't exist"""
+    created_conn = False
+    if conn is None:
+        conn = _get_raw_db_connection()
+        created_conn = True
     cursor = conn.cursor()
     
     # Create images table
@@ -260,7 +265,9 @@ def init_database():
     cursor.execute("CREATE INDEX IF NOT EXISTS idx_search_queries_type ON search_queries(search_type)")
     
     conn.commit()
-    conn.close()
+    # Only close the connection if we created it
+    if created_conn:
+        conn.close()
 
 # Initialize database tables only in production
 if IS_PRODUCTION:

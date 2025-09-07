@@ -34,7 +34,7 @@ class Test100PercentCoverage:
     
     def test_analytics_table_creation_error_handling(self):
         """Test lines 368-373: Analytics table creation error handling."""
-        with patch('app.get_db_connection') as mock_conn:
+        with patch('app._get_raw_db_connection') as mock_conn:
             mock_cursor = MagicMock()
             mock_conn.return_value.cursor.return_value = mock_cursor
             mock_cursor.execute.side_effect = Exception("Table creation failed")
@@ -353,6 +353,9 @@ class Test100PercentCoverage:
     def test_error_handling_in_routes(self):
         """Test error handling in various routes."""
         with test_db_manager as db_manager:
+            # Ensure database is initialized
+            init_database()
+            
             with app.test_client() as client:
                 # Test 404 for non-existent routes
                 response = client.get('/nonexistent-route')
@@ -394,6 +397,9 @@ class Test100PercentCoverage:
     def test_stats_api_error_handling(self):
         """Test stats API error handling."""
         with test_db_manager as db_manager:
+            # Ensure database is initialized
+            init_database()
+            
             # Test with empty database (no images table data)
             with app.test_client() as client:
                 response = client.get('/api/stats')
@@ -406,6 +412,9 @@ class Test100PercentCoverage:
     def test_first_image_api_error_handling(self):
         """Test first image API error handling."""
         with test_db_manager as db_manager:
+            # Ensure database is initialized
+            init_database()
+            
             # Test with database (may have images from other tests)
             with app.test_client() as client:
                 response = client.get('/api/first-image')

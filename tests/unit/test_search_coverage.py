@@ -13,6 +13,7 @@ os.environ['DATABASE_PATH'] = ':memory:'
 os.environ['DATA_DIR'] = 'tests/fixtures/test_data'
 
 from app import app, get_db_connection, init_database, get_ocr_text, get_image_by_path, get_total_images
+from tests.test_database import test_db_manager
 
 
 class TestSearchCoverage:
@@ -45,74 +46,32 @@ class TestSearchCoverage:
     
     def test_get_image_by_path_success(self):
         """Test getting image by file path."""
-        # Create test database with sample data
-        conn = get_db_connection()
-        cursor = conn.cursor()
-        
-        # Create images table
-        cursor.execute("""
-            CREATE TABLE IF NOT EXISTS images (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
-                file_path TEXT UNIQUE NOT NULL,
-                file_name TEXT NOT NULL,
-                file_size INTEGER NOT NULL,
-                file_type TEXT NOT NULL,
-                directory_path TEXT NOT NULL,
-                volume TEXT,
-                subdirectory TEXT,
-                file_hash TEXT,
-                has_ocr_text BOOLEAN DEFAULT FALSE,
-                ocr_text_path TEXT,
-                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-                updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-            )
-        """)
-        
-        # Insert test data
-        cursor.execute("""
-            INSERT INTO images (id, file_path, file_name, file_size, file_type, directory_path, volume, subdirectory, file_hash, has_ocr_text, ocr_text_path)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-        """, (1, 'Prod 01_20250822/VOL00001/IMAGES/IMAGES001/DOJ-OGR-00022168-001.TIF', 'DOJ-OGR-00022168-001.TIF', 1024, 'TIF', 'Prod 01_20250822/VOL00001/IMAGES/IMAGES001', 'VOL00001', 'IMAGES001', 'hash1', True, 'ocr1.txt'))
-        
-        conn.commit()
-        conn.close()
-        
-        # Test getting image by path
-        image = get_image_by_path('Prod 01_20250822/VOL00001/IMAGES/IMAGES001/DOJ-OGR-00022168-001.TIF')
-        assert image is not None
-        assert image[1] == 'Prod 01_20250822/VOL00001/IMAGES/IMAGES001/DOJ-OGR-00022168-001.TIF'
+        with test_db_manager as db_manager:
+            # Clear existing data and insert test data
+            conn = get_db_connection()
+            cursor = conn.cursor()
+            cursor.execute('DELETE FROM images')
+            conn.commit()
+            
+            cursor.execute("""
+                INSERT INTO images (file_path, file_name, file_size, file_type, directory_path, volume, subdirectory, file_hash, has_ocr_text, ocr_text_path)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            """, ('Prod 01_20250822/VOL00001/IMAGES/IMAGES001/DOJ-OGR-00022168-001.TIF', 'DOJ-OGR-00022168-001.TIF', 1024, 'TIF', 'Prod 01_20250822/VOL00001/IMAGES/IMAGES001', 'VOL00001', 'IMAGES001', 'hash1', True, 'ocr1.txt'))
+            
+            conn.commit()
+            conn.close()
+            
+            # Test getting image by path
+            image = get_image_by_path('Prod 01_20250822/VOL00001/IMAGES/IMAGES001/DOJ-OGR-00022168-001.TIF')
+            assert image is not None
+            assert image[1] == 'Prod 01_20250822/VOL00001/IMAGES/IMAGES001/DOJ-OGR-00022168-001.TIF'
     
     def test_get_image_by_path_not_found(self):
         """Test getting image by file path when not found."""
-        # Create test database
-        conn = get_db_connection()
-        cursor = conn.cursor()
-        
-        # Create images table
-        cursor.execute("""
-            CREATE TABLE IF NOT EXISTS images (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
-                file_path TEXT UNIQUE NOT NULL,
-                file_name TEXT NOT NULL,
-                file_size INTEGER NOT NULL,
-                file_type TEXT NOT NULL,
-                directory_path TEXT NOT NULL,
-                volume TEXT,
-                subdirectory TEXT,
-                file_hash TEXT,
-                has_ocr_text BOOLEAN DEFAULT FALSE,
-                ocr_text_path TEXT,
-                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-                updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-            )
-        """)
-        
-        conn.commit()
-        conn.close()
-        
-        # Test getting non-existent image
-        image = get_image_by_path('nonexistent/file/path.TIF')
-        assert image is None
+        with test_db_manager as db_manager:
+            # Test getting non-existent image
+            image = get_image_by_path('nonexistent/file/path.TIF')
+            assert image is None
     
     def test_get_total_images(self):
         """Test getting total number of images."""
