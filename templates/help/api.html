@@ -1,0 +1,476 @@
+{% extends "base.html" %}
+
+{% block title %}API Guide - Help & Documentation{% endblock %}
+
+{% block description %}Complete API documentation for the Epstein Documents Browser including endpoints, examples, and integration guides.{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-12">
+        <nav aria-label="breadcrumb">
+            <ol class="breadcrumb">
+                <li class="breadcrumb-item"><a href="{{ url_for('help_page') }}">Help</a></li>
+                <li class="breadcrumb-item active" aria-current="page">API Guide</li>
+            </ol>
+        </nav>
+        
+        <h1 class="mb-4">
+            <i class="fas fa-code me-2"></i>
+            API Guide
+        </h1>
+        <p class="lead">
+            The Epstein Documents Browser provides a comprehensive REST API for programmatic access to documents, 
+            search functionality, and system statistics.
+        </p>
+    </div>
+</div>
+
+<!-- API Overview -->
+<div class="row mb-4">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-header">
+                <h3><i class="fas fa-info-circle me-2"></i>API Overview</h3>
+            </div>
+            <div class="card-body">
+                <div class="row">
+                    <div class="col-md-6">
+                        <h5>Base URL</h5>
+                        <p><code>{{ request.url_root }}</code></p>
+                        
+                        <h5>Response Format</h5>
+                        <p>All API responses are in JSON format with appropriate HTTP status codes.</p>
+                        
+                        <h5>Authentication</h5>
+                        <p>Most endpoints are publicly accessible. Admin endpoints require authentication.</p>
+                    </div>
+                    <div class="col-md-6">
+                        <h5>Rate Limiting</h5>
+                        <p>No rate limiting is currently implemented, but please use responsibly.</p>
+                        
+                        <h5>CORS Support</h5>
+                        <p>Cross-origin requests are supported for web applications.</p>
+                        
+                        <h5>Error Handling</h5>
+                        <p>Errors return appropriate HTTP status codes with descriptive messages.</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Search API -->
+<div class="row mb-4">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-header">
+                <h3><i class="fas fa-search me-2"></i>Search API</h3>
+            </div>
+            <div class="card-body">
+                <h5>Endpoint</h5>
+                <p><code>GET /api/search</code></p>
+                
+                <h5>Parameters</h5>
+                <div class="table-responsive">
+                    <table class="table table-sm">
+                        <thead>
+                            <tr>
+                                <th>Parameter</th>
+                                <th>Type</th>
+                                <th>Required</th>
+                                <th>Description</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td><code>q</code></td>
+                                <td>string</td>
+                                <td>Yes</td>
+                                <td>Search query</td>
+                            </tr>
+                            <tr>
+                                <td><code>type</code></td>
+                                <td>string</td>
+                                <td>No</td>
+                                <td>Search type: <code>all</code>, <code>filename</code>, <code>ocr</code></td>
+                            </tr>
+                            <tr>
+                                <td><code>ocr</code></td>
+                                <td>string</td>
+                                <td>No</td>
+                                <td>OCR filter: <code>all</code>, <code>with-ocr</code>, <code>without-ocr</code></td>
+                            </tr>
+                            <tr>
+                                <td><code>sort</code></td>
+                                <td>string</td>
+                                <td>No</td>
+                                <td>Sort order: <code>relevance</code>, <code>filename</code>, <code>id</code></td>
+                            </tr>
+                            <tr>
+                                <td><code>page</code></td>
+                                <td>integer</td>
+                                <td>No</td>
+                                <td>Page number (default: 1)</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+                
+                <h5>Example Requests</h5>
+                <div class="row">
+                    <div class="col-md-6">
+                        <h6>Basic Search</h6>
+                        <div class="alert alert-light">
+                            <pre><code>GET {{ request.url_root }}api/search?q=juror</code></pre>
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <h6>Advanced Search</h6>
+                        <div class="alert alert-light">
+                            <pre><code>GET {{ request.url_root }}api/search?q=testimony&type=ocr&sort=relevance&page=1</code></pre>
+                        </div>
+                    </div>
+                </div>
+                
+                <h5>Response Format</h5>
+                <div class="alert alert-light">
+                    <pre><code>{
+  "results": [
+    {
+      "id": 123,
+      "file_name": "DOJ-OGR-00000008.jpg",
+      "file_path": "Prod 01_20250822/VOL00001/IMAGES/IMAGES001/DOJ-OGR-00000008.jpg",
+      "directory_path": "Prod 01_20250822/VOL00001/IMAGES/IMAGES001",
+      "has_ocr_text": true,
+      "match_type": "content",
+      "excerpt": "...prospective jurors completed a lengthy questionnaire..."
+    }
+  ],
+  "pagination": {
+    "page": 1,
+    "per_page": 50,
+    "total_count": 2,
+    "total_pages": 1,
+    "has_next": false,
+    "has_prev": false
+  }
+}</code></pre>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Statistics API -->
+<div class="row mb-4">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-header">
+                <h3><i class="fas fa-chart-bar me-2"></i>Statistics API</h3>
+            </div>
+            <div class="card-body">
+                <h5>Endpoint</h5>
+                <p><code>GET /api/stats</code></p>
+                
+                <h5>Description</h5>
+                <p>Returns system statistics including total images, OCR progress, and volume breakdown.</p>
+                
+                <h5>Example Request</h5>
+                <div class="alert alert-light">
+                    <pre><code>GET {{ request.url_root }}api/stats</code></pre>
+                </div>
+                
+                <h5>Response Format</h5>
+                <div class="alert alert-light">
+                    <pre><code>{
+  "total_images": 24528,
+  "images_with_ocr": 12345,
+  "ocr_percentage": 50.3,
+  "volumes": [
+    {
+      "volume": "VOL00001",
+      "count": 24528
+    }
+  ]
+}</code></pre>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Image Range API -->
+<div class="row mb-4">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-header">
+                <h3><i class="fas fa-image me-2"></i>Image Range API</h3>
+            </div>
+            <div class="card-body">
+                <h5>Endpoint</h5>
+                <p><code>GET /api/first-image</code></p>
+                
+                <h5>Description</h5>
+                <p>Returns the first and last available image IDs for navigation purposes.</p>
+                
+                <h5>Example Request</h5>
+                <div class="alert alert-light">
+                    <pre><code>GET {{ request.url_root }}api/first-image</code></pre>
+                </div>
+                
+                <h5>Response Format</h5>
+                <div class="alert alert-light">
+                    <pre><code>{
+  "first_id": 1,
+  "last_id": 24528
+}</code></pre>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Image Serving API -->
+<div class="row mb-4">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-header">
+                <h3><i class="fas fa-file-image me-2"></i>Image Serving API</h3>
+            </div>
+            <div class="card-body">
+                <h5>Endpoint</h5>
+                <p><code>GET /image/&lt;path&gt;</code></p>
+                
+                <h5>Description</h5>
+                <p>Serves image files with automatic format conversion (TIF to JPEG) for browser compatibility.</p>
+                
+                <h5>Parameters</h5>
+                <ul>
+                    <li><code>path</code> - Relative path to the image file</li>
+                </ul>
+                
+                <h5>Example Requests</h5>
+                <div class="row">
+                    <div class="col-md-6">
+                        <h6>Direct Image</h6>
+                        <div class="alert alert-light">
+                            <pre><code>GET {{ request.url_root }}image/Prod%2001_20250822/VOL00001/IMAGES/IMAGES001/DOJ-OGR-00000008.jpg</code></pre>
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <h6>Thumbnail</h6>
+                        <div class="alert alert-light">
+                            <pre><code>GET {{ request.url_root }}api/thumbnail/123</code></pre>
+                        </div>
+                    </div>
+                </div>
+                
+                <h5>Response</h5>
+                <p>Returns the image file with appropriate MIME type and headers for browser display.</p>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Admin API -->
+<div class="row mb-4">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-header">
+                <h3><i class="fas fa-shield-alt me-2"></i>Admin API</h3>
+            </div>
+            <div class="card-body">
+                <h5>Authentication Required</h5>
+                <p>Admin endpoints require authentication via session cookie after login.</p>
+                
+                <h5>Endpoints</h5>
+                <div class="table-responsive">
+                    <table class="table table-sm">
+                        <thead>
+                            <tr>
+                                <th>Endpoint</th>
+                                <th>Method</th>
+                                <th>Description</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td><code>/admin</code></td>
+                                <td>GET</td>
+                                <td>Admin dashboard with analytics</td>
+                            </tr>
+                            <tr>
+                                <td><code>/admin/login</code></td>
+                                <td>POST</td>
+                                <td>Admin login (password required)</td>
+                            </tr>
+                            <tr>
+                                <td><code>/admin/logout</code></td>
+                                <td>GET</td>
+                                <td>Admin logout</td>
+                            </tr>
+                            <tr>
+                                <td><code>/admin/analytics</code></td>
+                                <td>GET</td>
+                                <td>Raw analytics data (JSON)</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+                
+                <h5>Analytics Data</h5>
+                <p>The analytics endpoint provides detailed usage statistics including:</p>
+                <ul>
+                    <li>Request counts and unique visitors</li>
+                    <li>Popular search queries</li>
+                    <li>Top pages and referrers</li>
+                    <li>Hourly usage distribution</li>
+                </ul>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Integration Examples -->
+<div class="row mb-4">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-header">
+                <h3><i class="fas fa-plug me-2"></i>Integration Examples</h3>
+            </div>
+            <div class="card-body">
+                <h5>JavaScript/Fetch</h5>
+                <div class="alert alert-light">
+                    <pre><code>// Search for documents
+async function searchDocuments(query) {
+  const response = await fetch(`{{ request.url_root }}api/search?q=${encodeURIComponent(query)}`);
+  const data = await response.json();
+  return data.results;
+}
+
+// Get system statistics
+async function getStats() {
+  const response = await fetch('{{ request.url_root }}api/stats');
+  return await response.json();
+}
+
+// Usage
+searchDocuments('juror').then(results => {
+  console.log('Found', results.length, 'documents');
+});</code></pre>
+                </div>
+                
+                <h5>Python/Requests</h5>
+                <div class="alert alert-light">
+                    <pre><code>import requests
+
+# Search for documents
+def search_documents(query):
+    response = requests.get(f'{{ request.url_root }}api/search', params={'q': query})
+    return response.json()
+
+# Get system statistics
+def get_stats():
+    response = requests.get('{{ request.url_root }}api/stats')
+    return response.json()
+
+# Usage
+results = search_documents('testimony')
+print(f"Found {len(results['results'])} documents")</code></pre>
+                </div>
+                
+                <h5>cURL Examples</h5>
+                <div class="alert alert-light">
+                    <pre><code># Search for documents
+curl "{{ request.url_root }}api/search?q=juror&type=all"
+
+# Get statistics
+curl "{{ request.url_root }}api/stats"
+
+# Get image range
+curl "{{ request.url_root }}api/first-image"
+
+# Download an image
+curl "{{ request.url_root }}image/Prod%2001_20250822/VOL00001/IMAGES/IMAGES001/DOJ-OGR-00000008.jpg" -o image.jpg</code></pre>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Error Handling -->
+<div class="row mb-4">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-header">
+                <h3><i class="fas fa-exclamation-triangle me-2"></i>Error Handling</h3>
+            </div>
+            <div class="card-body">
+                <h5>HTTP Status Codes</h5>
+                <div class="table-responsive">
+                    <table class="table table-sm">
+                        <thead>
+                            <tr>
+                                <th>Code</th>
+                                <th>Description</th>
+                                <th>Example</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td><code>200</code></td>
+                                <td>Success</td>
+                                <td>Request completed successfully</td>
+                            </tr>
+                            <tr>
+                                <td><code>400</code></td>
+                                <td>Bad Request</td>
+                                <td>Invalid parameters</td>
+                            </tr>
+                            <tr>
+                                <td><code>404</code></td>
+                                <td>Not Found</td>
+                                <td>Image or endpoint not found</td>
+                            </tr>
+                            <tr>
+                                <td><code>500</code></td>
+                                <td>Internal Server Error</td>
+                                <td>Server-side error</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+                
+                <h5>Error Response Format</h5>
+                <div class="alert alert-light">
+                    <pre><code>{
+  "error": "Error message description",
+  "results": []
+}</code></pre>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Navigation -->
+<div class="row">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-body text-center">
+                <h5>Continue Learning</h5>
+                <a href="{{ url_for('help_usage') }}" class="btn btn-success me-2">
+                    <i class="fas fa-play me-1"></i>Usage Guide
+                </a>
+                <a href="{{ url_for('help_features') }}" class="btn btn-warning me-2">
+                    <i class="fas fa-star me-1"></i>Features
+                </a>
+                <a href="{{ url_for('help_overview') }}" class="btn btn-primary">
+                    <i class="fas fa-info-circle me-1"></i>Project Overview
+                </a>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

@@ -1,0 +1,206 @@
+{% extends "base.html" %}
+
+{% block title %}Project Overview - Help & Documentation{% endblock %}
+
+{% block description %}Learn about the Epstein Documents Browser project architecture, what we're working with, and the open source implementation.{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-12">
+        <nav aria-label="breadcrumb">
+            <ol class="breadcrumb">
+                <li class="breadcrumb-item"><a href="{{ url_for('help_page') }}">Help</a></li>
+                <li class="breadcrumb-item active" aria-current="page">Overview</li>
+            </ol>
+        </nav>
+        
+        <h1 class="mb-4">
+            <i class="fas fa-info-circle me-2"></i>
+            Project Overview
+        </h1>
+    </div>
+</div>
+
+<!-- What We're Working With -->
+<div class="row mb-4">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-header">
+                <h3><i class="fas fa-database me-2"></i>What We're Working With</h3>
+            </div>
+            <div class="card-body">
+                <div class="row">
+                    <div class="col-md-6">
+                        <h5>Document Collection</h5>
+                        <ul>
+                            <li><strong>{{ "{:,}".format(total_images) }} document images</strong> from congressional records</li>
+                            <li><strong>Multiple formats</strong> including TIF, JPG, and other image types</li>
+                            <li><strong>Organized structure</strong> with volumes and subdirectories</li>
+                            <li><strong>{{ "{:,}".format(images_with_ocr) }} images with OCR</strong> ({{ "%.1f"|format(ocr_percentage) }}% complete)</li>
+                        </ul>
+                    </div>
+                    <div class="col-md-6">
+                        <h5>Processing Status</h5>
+                        <div class="progress mb-3" style="height: 25px;">
+                            <div class="progress-bar" role="progressbar" style="width: {{ "%.1f"|format(ocr_percentage) }}%" 
+                                 aria-valuenow="{{ "%.1f"|format(ocr_percentage) }}" aria-valuemin="0" aria-valuemax="100">
+                                {{ "%.1f"|format(ocr_percentage) }}% Complete
+                            </div>
+                        </div>
+                        <p class="text-muted">
+                            <i class="fas fa-info-circle me-1"></i>
+                            OCR processing continues in the background to extract searchable text from all documents.
+                        </p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Project Description -->
+<div class="row mb-4">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-header">
+                <h3><i class="fas fa-project-diagram me-2"></i>Project Description</h3>
+            </div>
+            <div class="card-body">
+                <p>
+                    The Epstein Documents Browser is a sophisticated document management system designed to make 
+                    congressional records easily accessible and searchable. This reference implementation demonstrates 
+                    the full capabilities of the open-source project.
+                </p>
+                
+                <h5>Key Objectives</h5>
+                <ul>
+                    <li><strong>Accessibility</strong> - Make government documents easily browsable and searchable</li>
+                    <li><strong>Transparency</strong> - Provide open access to congressional records and documents</li>
+                    <li><strong>Searchability</strong> - Enable full-text search through OCR-processed documents</li>
+                    <li><strong>Usability</strong> - Create an intuitive interface for document discovery and navigation</li>
+                </ul>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- System Architecture -->
+<div class="row mb-4">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-header">
+                <h3><i class="fas fa-cogs me-2"></i>System Architecture</h3>
+            </div>
+            <div class="card-body">
+                <div class="row">
+                    <div class="col-md-6">
+                        <h5>Backend Components</h5>
+                        <ul>
+                            <li><strong>Flask Web Server</strong> - Python web framework for API and web interface</li>
+                            <li><strong>SQLite Database</strong> - Document metadata and OCR tracking</li>
+                            <li><strong>Image Indexer</strong> - Scans and catalogs all document images</li>
+                            <li><strong>OCR Processor</strong> - Tesseract-based text extraction</li>
+                            <li><strong>Screen Management</strong> - Production process management</li>
+                        </ul>
+                    </div>
+                    <div class="col-md-6">
+                        <h5>Frontend Components</h5>
+                        <ul>
+                            <li><strong>Bootstrap 5</strong> - Responsive UI framework</li>
+                            <li><strong>Font Awesome</strong> - Icon library</li>
+                            <li><strong>Custom JavaScript</strong> - Navigation and interaction</li>
+                            <li><strong>PIL/Pillow</strong> - Image processing and format conversion</li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Database Schema -->
+<div class="row mb-4">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-header">
+                <h3><i class="fas fa-table me-2"></i>Database Schema</h3>
+            </div>
+            <div class="card-body">
+                <h5>Images Table</h5>
+                <div class="alert alert-light">
+                    <ul class="mb-0">
+                        <li><code>id</code> - Unique identifier</li>
+                        <li><code>file_path</code> - Relative path to image file</li>
+                        <li><code>file_name</code> - Original filename</li>
+                        <li><code>file_size</code> - File size in bytes</li>
+                        <li><code>file_type</code> - File extension</li>
+                        <li><code>has_ocr_text</code> - Boolean flag for OCR completion</li>
+                        <li><code>ocr_text_path</code> - Path to extracted text file</li>
+                        <li><code>file_hash</code> - MD5 hash for change detection</li>
+                    </ul>
+                </div>
+                
+                <h5>Analytics Tables</h5>
+                <div class="alert alert-light">
+                    <ul class="mb-0">
+                        <li><code>analytics</code> - Request tracking and user analytics</li>
+                        <li><code>search_queries</code> - Search query tracking and popular searches</li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Open Source Repository -->
+<div class="row mb-4">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-header">
+                <h3><i class="fab fa-github me-2"></i>Open Source Repository</h3>
+            </div>
+            <div class="card-body">
+                <p>
+                    The complete source code, documentation, and setup instructions are available at:
+                </p>
+                <div class="text-center">
+                    <a href="https://github.com/actuallyrizzn/epstein-browser" target="_blank" class="btn btn-outline-success btn-lg">
+                        <i class="fab fa-github me-2"></i>github.com/actuallyrizzn/epstein-browser
+                    </a>
+                </div>
+                
+                <hr>
+                
+                <h5>What's Available</h5>
+                <ul>
+                    <li><strong>Complete source code</strong> - All Python, HTML, CSS, and JavaScript files</li>
+                    <li><strong>Setup instructions</strong> - Step-by-step installation and configuration guide</li>
+                    <li><strong>Documentation</strong> - API documentation, database schema, and usage guides</li>
+                    <li><strong>Production scripts</strong> - Screen-based process management for deployment</li>
+                    <li><strong>Contributing guidelines</strong> - How to contribute to the project</li>
+                </ul>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Navigation -->
+<div class="row">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-body text-center">
+                <h5>Continue Learning</h5>
+                <a href="{{ url_for('help_features') }}" class="btn btn-primary me-2">
+                    <i class="fas fa-star me-1"></i>View Features
+                </a>
+                <a href="{{ url_for('help_usage') }}" class="btn btn-success me-2">
+                    <i class="fas fa-play me-1"></i>Usage Guide
+                </a>
+                <a href="{{ url_for('help_api') }}" class="btn btn-info">
+                    <i class="fas fa-code me-1"></i>API Guide
+                </a>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

@@ -1,0 +1,323 @@
+{% extends "base.html" %}
+
+{% block title %}Usage Guide - Help & Documentation{% endblock %}
+
+{% block description %}Step-by-step instructions for using the Epstein Documents Browser including navigation, search, and keyboard shortcuts.{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-12">
+        <nav aria-label="breadcrumb">
+            <ol class="breadcrumb">
+                <li class="breadcrumb-item"><a href="{{ url_for('help_page') }}">Help</a></li>
+                <li class="breadcrumb-item active" aria-current="page">Usage Guide</li>
+            </ol>
+        </nav>
+        
+        <h1 class="mb-4">
+            <i class="fas fa-play me-2"></i>
+            Usage Guide
+        </h1>
+    </div>
+</div>
+
+<!-- Getting Started -->
+<div class="row mb-4">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-header">
+                <h3><i class="fas fa-rocket me-2"></i>Getting Started</h3>
+            </div>
+            <div class="card-body">
+                <h5>Basic Navigation</h5>
+                <ol>
+                    <li><strong>Browse Documents</strong> - Click "Start Reading" on the homepage to begin viewing documents</li>
+                    <li><strong>Navigate</strong> - Use Previous/Next buttons or arrow keys to move between documents</li>
+                    <li><strong>Zoom</strong> - Click on images to zoom in/out, or use +/- buttons</li>
+                    <li><strong>Search</strong> - Use the search box to find documents by filename or content</li>
+                    <li><strong>View OCR Text</strong> - Extracted text appears in the right panel when available</li>
+                </ol>
+                
+                <div class="alert alert-info">
+                    <h6><i class="fas fa-lightbulb me-2"></i>Pro Tip</h6>
+                    <p class="mb-0">
+                        Start by browsing a few documents to get familiar with the interface, then try searching for specific terms 
+                        to see how the OCR text search works.
+                    </p>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Keyboard Shortcuts -->
+<div class="row mb-4">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-header">
+                <h3><i class="fas fa-keyboard me-2"></i>Keyboard Shortcuts</h3>
+            </div>
+            <div class="card-body">
+                <div class="row">
+                    <div class="col-md-6">
+                        <h5>Navigation</h5>
+                        <ul class="list-unstyled">
+                            <li class="mb-2">
+                                <kbd>←</kbd> <kbd>→</kbd> 
+                                <span class="ms-2">Navigate between documents</span>
+                            </li>
+                            <li class="mb-2">
+                                <kbd>Home</kbd> 
+                                <span class="ms-2">Jump to first document</span>
+                            </li>
+                            <li class="mb-2">
+                                <kbd>End</kbd> 
+                                <span class="ms-2">Jump to last document</span>
+                            </li>
+                            <li class="mb-2">
+                                <kbd>F11</kbd> 
+                                <span class="ms-2">Toggle fullscreen mode</span>
+                            </li>
+                        </ul>
+                    </div>
+                    <div class="col-md-6">
+                        <h5>Zoom & View</h5>
+                        <ul class="list-unstyled">
+                            <li class="mb-2">
+                                <kbd>+</kbd> <kbd>=</kbd> 
+                                <span class="ms-2">Zoom in</span>
+                            </li>
+                            <li class="mb-2">
+                                <kbd>-</kbd> 
+                                <span class="ms-2">Zoom out</span>
+                            </li>
+                            <li class="mb-2">
+                                <kbd>Esc</kbd> 
+                                <span class="ms-2">Exit fullscreen</span>
+                            </li>
+                            <li class="mb-2">
+                                <kbd>Click</kbd> 
+                                <span class="ms-2">Toggle zoom on image</span>
+                            </li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Document Viewer Interface -->
+<div class="row mb-4">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-header">
+                <h3><i class="fas fa-desktop me-2"></i>Understanding the Interface</h3>
+            </div>
+            <div class="card-body">
+                <h5>Document Viewer Layout</h5>
+                <div class="alert alert-info">
+                    <h6><i class="fas fa-info-circle me-2"></i>Interface Components</h6>
+                    <ul class="mb-0">
+                        <li><strong>Top Bar</strong> - Document name, progress bar, and navigation controls</li>
+                        <li><strong>Main Panel</strong> - Document image with zoom and pan capabilities</li>
+                        <li><strong>Text Panel</strong> - OCR extracted text (when available)</li>
+                        <li><strong>Bottom Bar</strong> - Page controls and zoom controls</li>
+                    </ul>
+                </div>
+                
+                <h5>Progress Tracking</h5>
+                <p>
+                    The progress bar at the top shows your current position in the document collection. 
+                    You can see both the current document number and the total number of documents.
+                </p>
+                
+                <h5>Zoom Controls</h5>
+                <p>
+                    Click on the image to zoom in/out, or use the +/- buttons. In fullscreen mode, 
+                    you can pan around the zoomed image by clicking and dragging.
+                </p>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Search Guide -->
+<div class="row mb-4">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-header">
+                <h3><i class="fas fa-search me-2"></i>Search Guide</h3>
+            </div>
+            <div class="card-body">
+                <h5>Search Types</h5>
+                <div class="row">
+                    <div class="col-md-4">
+                        <h6>Filename Search</h6>
+                        <p>Search for documents by their filename. This is the fastest search method.</p>
+                        <div class="alert alert-light">
+                            <strong>Example:</strong> <code>DOJ-OGR-00000008</code>
+                        </div>
+                    </div>
+                    <div class="col-md-4">
+                        <h6>OCR Text Search</h6>
+                        <p>Search within the extracted text content of documents.</p>
+                        <div class="alert alert-light">
+                            <strong>Example:</strong> <code>juror testimony</code>
+                        </div>
+                    </div>
+                    <div class="col-md-4">
+                        <h6>Combined Search</h6>
+                        <p>Search both filenames and text content simultaneously.</p>
+                        <div class="alert alert-light">
+                            <strong>Example:</strong> <code>DOJ juror</code>
+                        </div>
+                    </div>
+                </div>
+                
+                <h5>Search Features</h5>
+                <ul>
+                    <li><strong>Text Excerpts</strong> - See context around your search matches</li>
+                    <li><strong>Highlighting</strong> - Search terms are highlighted in results</li>
+                    <li><strong>Pagination</strong> - Navigate through large result sets</li>
+                    <li><strong>Sorting</strong> - Sort by relevance, filename, or document ID</li>
+                </ul>
+                
+                <h5>Search Tips</h5>
+                <div class="alert alert-warning">
+                    <h6><i class="fas fa-lightbulb me-2"></i>Search Tips</h6>
+                    <ul class="mb-0">
+                        <li>Use specific terms for better results</li>
+                        <li>Try different search types if you don't find what you're looking for</li>
+                        <li>OCR search works best with complete words</li>
+                        <li>Filename search is case-sensitive</li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Advanced Features -->
+<div class="row mb-4">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-header">
+                <h3><i class="fas fa-cogs me-2"></i>Advanced Features</h3>
+            </div>
+            <div class="card-body">
+                <div class="row">
+                    <div class="col-md-6">
+                        <h5>Quick Navigation</h5>
+                        <ul>
+                            <li><strong>Jump to First</strong> - Click the "First" button or press Home</li>
+                            <li><strong>Jump to Last</strong> - Click the "Last" button or press End</li>
+                            <li><strong>Random Document</strong> - Use the "Random" button to discover new content</li>
+                            <li><strong>Direct Navigation</strong> - Enter a document number in the navigation box</li>
+                        </ul>
+                    </div>
+                    <div class="col-md-6">
+                        <h5>Viewing Options</h5>
+                        <ul>
+                            <li><strong>Fullscreen Mode</strong> - Press F11 for distraction-free viewing</li>
+                            <li><strong>Text-Only View</strong> - Focus on OCR text without the image</li>
+                            <li><strong>Image-Only View</strong> - View just the document image</li>
+                            <li><strong>Side-by-Side</strong> - View image and text together</li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Troubleshooting -->
+<div class="row mb-4">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-header">
+                <h3><i class="fas fa-wrench me-2"></i>Troubleshooting</h3>
+            </div>
+            <div class="card-body">
+                <h5>Common Issues</h5>
+                <div class="accordion" id="troubleshootingAccordion">
+                    <div class="accordion-item">
+                        <h2 class="accordion-header" id="headingOne">
+                            <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#collapseOne">
+                                Images not loading
+                            </button>
+                        </h2>
+                        <div id="collapseOne" class="accordion-collapse collapse" data-bs-parent="#troubleshootingAccordion">
+                            <div class="accordion-body">
+                                <p>If images aren't loading:</p>
+                                <ul>
+                                    <li>Check your internet connection</li>
+                                    <li>Try refreshing the page</li>
+                                    <li>Clear your browser cache</li>
+                                    <li>Try a different browser</li>
+                                </ul>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="accordion-item">
+                        <h2 class="accordion-header" id="headingTwo">
+                            <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#collapseTwo">
+                                Search not returning results
+                            </button>
+                        </h2>
+                        <div id="collapseTwo" class="accordion-collapse collapse" data-bs-parent="#troubleshootingAccordion">
+                            <div class="accordion-body">
+                                <p>If search isn't working:</p>
+                                <ul>
+                                    <li>Try different search terms</li>
+                                    <li>Check if you're using the right search type</li>
+                                    <li>Make sure the document has OCR text (for content search)</li>
+                                    <li>Try a broader search term</li>
+                                </ul>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="accordion-item">
+                        <h2 class="accordion-header" id="headingThree">
+                            <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#collapseThree">
+                                Keyboard shortcuts not working
+                            </button>
+                        </h2>
+                        <div id="collapseThree" class="accordion-collapse collapse" data-bs-parent="#troubleshootingAccordion">
+                            <div class="accordion-body">
+                                <p>If keyboard shortcuts aren't working:</p>
+                                <ul>
+                                    <li>Make sure the document viewer is focused (click on it)</li>
+                                    <li>Check if another application is capturing the keys</li>
+                                    <li>Try refreshing the page</li>
+                                    <li>Use the mouse controls as an alternative</li>
+                                </ul>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Navigation -->
+<div class="row">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-body text-center">
+                <h5>Continue Learning</h5>
+                <a href="{{ url_for('help_api') }}" class="btn btn-info me-2">
+                    <i class="fas fa-code me-1"></i>API Guide
+                </a>
+                <a href="{{ url_for('help_features') }}" class="btn btn-warning me-2">
+                    <i class="fas fa-star me-1"></i>Features
+                </a>
+                <a href="{{ url_for('help_overview') }}" class="btn btn-primary">
+                    <i class="fas fa-info-circle me-1"></i>Project Overview
+                </a>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

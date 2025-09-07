@@ -1,0 +1,242 @@
+{% extends "base.html" %}
+
+{% block title %}Key Features - Help & Documentation{% endblock %}
+
+{% block description %}Discover the powerful features of the Epstein Documents Browser including document viewing, search capabilities, and OCR processing.{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-12">
+        <nav aria-label="breadcrumb">
+            <ol class="breadcrumb">
+                <li class="breadcrumb-item"><a href="{{ url_for('help_page') }}">Help</a></li>
+                <li class="breadcrumb-item active" aria-current="page">Features</li>
+            </ol>
+        </nav>
+        
+        <h1 class="mb-4">
+            <i class="fas fa-star me-2"></i>
+            Key Features
+        </h1>
+    </div>
+</div>
+
+<!-- Document Viewer Features -->
+<div class="row mb-4">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-header">
+                <h3><i class="fas fa-eye me-2"></i>Document Viewer</h3>
+            </div>
+            <div class="card-body">
+                <div class="row">
+                    <div class="col-md-6">
+                        <h5>Interface Features</h5>
+                        <ul>
+                            <li><strong>Archive.org-style interface</strong> - Clean, focused document browsing</li>
+                            <li><strong>Zoom controls</strong> - Click to zoom or use +/- buttons</li>
+                            <li><strong>Fullscreen mode</strong> - Press F11 or click fullscreen button</li>
+                            <li><strong>Progress tracking</strong> - Visual progress bar showing position</li>
+                            <li><strong>Keyboard navigation</strong> - Arrow keys, Home, End for quick navigation</li>
+                        </ul>
+                    </div>
+                    <div class="col-md-6">
+                        <h5>Image Processing</h5>
+                        <ul>
+                            <li><strong>Automatic format conversion</strong> - TIF files converted to JPEG for browser compatibility</li>
+                            <li><strong>High-quality thumbnails</strong> - Fast loading with optimized image sizes</li>
+                            <li><strong>Responsive scaling</strong> - Images adapt to screen size</li>
+                            <li><strong>Pan and zoom</strong> - Smooth image navigation</li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Search & Discovery Features -->
+<div class="row mb-4">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-header">
+                <h3><i class="fas fa-search me-2"></i>Search & Discovery</h3>
+            </div>
+            <div class="card-body">
+                <div class="row">
+                    <div class="col-md-6">
+                        <h5>Search Types</h5>
+                        <ul>
+                            <li><strong>Filename search</strong> - Find documents by name</li>
+                            <li><strong>OCR text search</strong> - Search within extracted text content</li>
+                            <li><strong>Combined search</strong> - Search both filenames and content</li>
+                            <li><strong>Advanced filtering</strong> - Filter by OCR status and file type</li>
+                        </ul>
+                    </div>
+                    <div class="col-md-6">
+                        <h5>Search Features</h5>
+                        <ul>
+                            <li><strong>Text excerpts</strong> - See context around search matches</li>
+                            <li><strong>Search highlighting</strong> - Highlighted search terms in results</li>
+                            <li><strong>Pagination</strong> - Navigate through large result sets</li>
+                            <li><strong>Sorting options</strong> - Sort by relevance, filename, or ID</li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- OCR Processing Features -->
+<div class="row mb-4">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-header">
+                <h3><i class="fas fa-font me-2"></i>OCR Processing</h3>
+            </div>
+            <div class="card-body">
+                <div class="row">
+                    <div class="col-md-6">
+                        <h5>Text Extraction</h5>
+                        <ul>
+                            <li><strong>Tesseract OCR</strong> - Industry-standard text recognition</li>
+                            <li><strong>Memory efficient</strong> - Lightweight processing for large datasets</li>
+                            <li><strong>Background processing</strong> - Non-blocking OCR operations</li>
+                            <li><strong>Progress tracking</strong> - Real-time processing status</li>
+                        </ul>
+                    </div>
+                    <div class="col-md-6">
+                        <h5>Text Display</h5>
+                        <ul>
+                            <li><strong>Side-by-side view</strong> - Image and text displayed together</li>
+                            <li><strong>Searchable content</strong> - Full-text search through extracted text</li>
+                            <li><strong>Text formatting</strong> - Preserved formatting and structure</li>
+                            <li><strong>Error handling</strong> - Graceful handling of OCR failures</li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Technical Features -->
+<div class="row mb-4">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-header">
+                <h3><i class="fas fa-cogs me-2"></i>Technical Features</h3>
+            </div>
+            <div class="card-body">
+                <div class="row">
+                    <div class="col-md-6">
+                        <h5>Data Management</h5>
+                        <ul>
+                            <li><strong>Idempotent operations</strong> - Safe to re-run during file transfers</li>
+                            <li><strong>File hash tracking</strong> - Detect changed files efficiently</li>
+                            <li><strong>SQLite database</strong> - Fast, reliable data storage</li>
+                            <li><strong>Directory structure mapping</strong> - Complete file organization</li>
+                        </ul>
+                    </div>
+                    <div class="col-md-6">
+                        <h5>Performance & Reliability</h5>
+                        <ul>
+                            <li><strong>Responsive design</strong> - Works on desktop and mobile devices</li>
+                            <li><strong>Production ready</strong> - Screen-based process management</li>
+                            <li><strong>Error handling</strong> - Robust error handling and recovery</li>
+                            <li><strong>Analytics tracking</strong> - User behavior and search analytics</li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- API Features -->
+<div class="row mb-4">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-header">
+                <h3><i class="fas fa-code me-2"></i>API Features</h3>
+            </div>
+            <div class="card-body">
+                <div class="row">
+                    <div class="col-md-6">
+                        <h5>REST API</h5>
+                        <ul>
+                            <li><strong>Search API</strong> - Programmatic document search</li>
+                            <li><strong>Statistics API</strong> - System status and progress</li>
+                            <li><strong>Image serving</strong> - Direct access to document images</li>
+                            <li><strong>Thumbnail generation</strong> - Optimized image thumbnails</li>
+                        </ul>
+                    </div>
+                    <div class="col-md-6">
+                        <h5>Integration</h5>
+                        <ul>
+                            <li><strong>JSON responses</strong> - Machine-readable data formats</li>
+                            <li><strong>CORS support</strong> - Cross-origin resource sharing</li>
+                            <li><strong>Pagination</strong> - Efficient handling of large datasets</li>
+                            <li><strong>Error handling</strong> - Consistent error response format</li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- User Experience Features -->
+<div class="row mb-4">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-header">
+                <h3><i class="fas fa-user me-2"></i>User Experience</h3>
+            </div>
+            <div class="card-body">
+                <div class="row">
+                    <div class="col-md-6">
+                        <h5>Navigation</h5>
+                        <ul>
+                            <li><strong>Quick navigation</strong> - Jump to first, middle, or last document</li>
+                            <li><strong>Random browsing</strong> - Discover documents randomly</li>
+                            <li><strong>Keyboard shortcuts</strong> - Power user navigation</li>
+                            <li><strong>Breadcrumb navigation</strong> - Clear page hierarchy</li>
+                        </ul>
+                    </div>
+                    <div class="col-md-6">
+                        <h5>Interface</h5>
+                        <ul>
+                            <li><strong>Clean design</strong> - Minimal, distraction-free interface</li>
+                            <li><strong>Mobile responsive</strong> - Works on all device sizes</li>
+                            <li><strong>Accessibility</strong> - Screen reader and keyboard friendly</li>
+                            <li><strong>Loading indicators</strong> - Clear feedback during operations</li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Navigation -->
+<div class="row">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-body text-center">
+                <h5>Learn More</h5>
+                <a href="{{ url_for('help_usage') }}" class="btn btn-success me-2">
+                    <i class="fas fa-play me-1"></i>Usage Guide
+                </a>
+                <a href="{{ url_for('help_api') }}" class="btn btn-info me-2">
+                    <i class="fas fa-code me-1"></i>API Guide
+                </a>
+                <a href="{{ url_for('help_overview') }}" class="btn btn-primary">
+                    <i class="fas fa-info-circle me-1"></i>Project Overview
+                </a>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

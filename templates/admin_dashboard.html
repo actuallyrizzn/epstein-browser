@@ -73,6 +73,53 @@
             </div>
 
             <div class="row">
+                <!-- Popular Searches -->
+                <div class="col-md-6 mb-4">
+                    <div class="card">
+                        <div class="card-header">
+                            <h5 class="card-title mb-0">
+                                <i class="fas fa-search me-2"></i>Popular Searches
+                            </h5>
+                        </div>
+                        <div class="card-body">
+                            {% if analytics.popular_searches %}
+                                <div class="table-responsive">
+                                    <table class="table table-sm">
+                                        <thead>
+                                            <tr>
+                                                <th>Query</th>
+                                                <th>Type</th>
+                                                <th>Searches</th>
+                                                <th>Avg Results</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            {% for search in analytics.popular_searches %}
+                                            <tr>
+                                                <td>
+                                                    <code>{{ search.query }}</code>
+                                                </td>
+                                                <td>
+                                                    <span class="badge bg-info">{{ search.search_type }}</span>
+                                                </td>
+                                                <td>
+                                                    <span class="badge bg-primary">{{ search.search_count }}</span>
+                                                </td>
+                                                <td>
+                                                    <span class="badge bg-secondary">{{ "%.0f"|format(search.avg_results) }}</span>
+                                                </td>
+                                            </tr>
+                                            {% endfor %}
+                                        </tbody>
+                                    </table>
+                                </div>
+                            {% else %}
+                                <p class="text-muted">No search data available</p>
+                            {% endif %}
+                        </div>
+                    </div>
+                </div>
+
                 <!-- Top Pages -->
                 <div class="col-md-6 mb-4">
                     <div class="card">
@@ -111,7 +158,9 @@
                         </div>
                     </div>
                 </div>
+            </div>
 
+            <div class="row">
                 <!-- Referrers -->
                 <div class="col-md-6 mb-4">
                     <div class="card">

@@ -106,10 +106,27 @@ def init_analytics_table():
         )
     """)
     
+    # Create search queries table
+    cursor.execute("""
+        CREATE TABLE IF NOT EXISTS search_queries (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            timestamp DATETIME DEFAULT CURRENT_TIMESTAMP,
+            query TEXT NOT NULL,
+            search_type TEXT DEFAULT 'all',
+            results_count INTEGER DEFAULT 0,
+            ip_address TEXT,
+            session_id TEXT,
+            user_agent TEXT
+        )
+    """)
+    
     # Create indexes for better performance
     cursor.execute("CREATE INDEX IF NOT EXISTS idx_analytics_timestamp ON analytics(timestamp)")
     cursor.execute("CREATE INDEX IF NOT EXISTS idx_analytics_path ON analytics(path)")
     cursor.execute("CREATE INDEX IF NOT EXISTS idx_analytics_ip ON analytics(ip_address)")
+    cursor.execute("CREATE INDEX IF NOT EXISTS idx_search_queries_timestamp ON search_queries(timestamp)")
+    cursor.execute("CREATE INDEX IF NOT EXISTS idx_search_queries_query ON search_queries(query)")
+    cursor.execute("CREATE INDEX IF NOT EXISTS idx_search_queries_type ON search_queries(search_type)")
     
     conn.commit()
     conn.close()
@@ -147,6 +164,35 @@ def track_analytics(request, response, response_time):
         conn.close()
     except Exception as e:
         print(f"Analytics tracking error: {e}")
+
+
+def track_search_query(query, search_type, results_count, request):
+    """Track search query for analytics"""
+    try:
+        conn = get_db_connection()
+        cursor = conn.cursor()
+        
+        # Get or create session ID
+        if 'session_id' not in session:
+            session['session_id'] = str(uuid.uuid4())
+        
+        cursor.execute("""
+            INSERT INTO search_queries 
+            (query, search_type, results_count, ip_address, session_id, user_agent)
+            VALUES (?, ?, ?, ?, ?, ?)
+        """, (
+            query,
+            search_type,
+            results_count,
+            request.remote_addr,
+            session['session_id'],
+            request.headers.get('User-Agent', '')
+        ))
+        
+        conn.commit()
+        conn.close()
+    except Exception as e:
+        print(f"Search tracking error: {e}")
 
 
 def get_analytics_data(days=7):
@@ -203,13 +249,27 @@ def get_analytics_data(days=7):
     
     referrers = cursor.fetchall()
     
+    # Get popular searches
+    cursor.execute("""
+        SELECT query, search_type, COUNT(*) as search_count, AVG(results_count) as avg_results
+        FROM search_queries 
+        WHERE timestamp >= datetime('now', '-{} days')
+        AND query != ''
+        GROUP BY query, search_type
+        ORDER BY search_count DESC
+        LIMIT 20
+    """.format(days))
+    
+    popular_searches = cursor.fetchall()
+    
     conn.close()
     
     return {
         'stats': dict(stats),
         'top_pages': [dict(row) for row in top_pages],
         'hourly_data': [dict(row) for row in hourly_data],
-        'referrers': [dict(row) for row in referrers]
+        'referrers': [dict(row) for row in referrers],
+        'popular_searches': [dict(row) for row in popular_searches]
     }
 
 
@@ -614,6 +674,9 @@ def api_search():
             }
         }
         
+        # Track the search query for analytics
+        track_search_query(query, search_type, total_count, request)
+        
         return jsonify(response_data)
         
     except Exception as e:
@@ -647,8 +710,48 @@ def search_page():
 
 @app.route('/help')
 def help_page():
-    """Help and documentation page"""
-    return render_template('help.html')
+    """Help and documentation index page"""
+    conn = get_db_connection()
+    total_images = conn.execute('SELECT COUNT(*) FROM images').fetchone()[0]
+    images_with_ocr = conn.execute('SELECT COUNT(*) FROM images WHERE has_ocr_text = TRUE').fetchone()[0]
+    conn.close()
+    
+    return render_template('help/index.html', 
+                         total_images=total_images,
+                         images_with_ocr=images_with_ocr,
+                         ocr_percentage=(images_with_ocr / total_images * 100) if total_images > 0 else 0)
+
+
+@app.route('/help/overview')
+def help_overview():
+    """Help overview page"""
+    conn = get_db_connection()
+    total_images = conn.execute('SELECT COUNT(*) FROM images').fetchone()[0]
+    images_with_ocr = conn.execute('SELECT COUNT(*) FROM images WHERE has_ocr_text = TRUE').fetchone()[0]
+    conn.close()
+    
+    return render_template('help/overview.html', 
+                         total_images=total_images,
+                         images_with_ocr=images_with_ocr,
+                         ocr_percentage=(images_with_ocr / total_images * 100) if total_images > 0 else 0)
+
+
+@app.route('/help/features')
+def help_features():
+    """Help features page"""
+    return render_template('help/features.html')
+
+
+@app.route('/help/usage')
+def help_usage():
+    """Help usage guide page"""
+    return render_template('help/usage.html')
+
+
+@app.route('/help/api')
+def help_api():
+    """Help API guide page"""
+    return render_template('help/api.html')
 
 
 @app.route('/data/screenshots/<filename>')
