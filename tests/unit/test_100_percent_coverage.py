@@ -118,7 +118,7 @@ class Test100PercentCoverage:
             cursor = conn.cursor()
             cursor.execute("""
                 INSERT INTO images (file_path, file_name, volume, has_ocr_text, file_size, file_type, directory_path)
-                VALUES ('test/path.tif', 'test.tif', 'VOL001', 0, 1024, 'TIF', 'test/')
+                VALUES ('test/path_unique.tif', 'test.tif', 'VOL001', 0, 1024, 'TIF', 'test/')
             """)
             conn.commit()
             conn.close()

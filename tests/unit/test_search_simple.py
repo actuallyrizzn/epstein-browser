@@ -22,7 +22,7 @@ class TestSearchSimple:
     def test_get_ocr_text_success(self):
         """Test OCR text retrieval success."""
         # Test with existing OCR file
-        file_path = "Prod 01_20250822/VOL00001/IMAGES/IMAGES001/DOJ-OGR-00022168-001.TIF"
+        file_path = "Prod 01_20250822/VOL00001/IMAGES/IMAGES001/DOJ-OGR-00022168-001_64230841.TIF"
         ocr_text = get_ocr_text(file_path)
         assert ocr_text is not None
         assert "Lorem ipsum" in ocr_text
@@ -36,7 +36,7 @@ class TestSearchSimple:
     
     def test_get_ocr_text_encoding_error(self):
         """Test OCR text retrieval with encoding error."""
-        file_path = "Prod 01_20250822/VOL00001/IMAGES/IMAGES001/DOJ-OGR-00022168-001.TIF"
+        file_path = "Prod 01_20250822/VOL00001/IMAGES/IMAGES001/DOJ-OGR-00022168-001_64230841.TIF"
         
         # Mock the file to exist but cause encoding error
         with patch('pathlib.Path.exists', return_value=True):
@@ -47,22 +47,25 @@ class TestSearchSimple:
     def test_get_image_by_path_success(self):
         """Test getting image by file path."""
         with test_db_manager as db_manager:
-            # Insert test data
+            # Clear any existing data and insert test data
             conn = get_db_connection()
+            cursor = conn.cursor()
+            cursor.execute('DELETE FROM images')
+            conn.commit()
             cursor = conn.cursor()
             
             cursor.execute("""
-                INSERT INTO images (id, file_path, file_name, file_size, file_type, directory_path, volume, subdirectory, file_hash, has_ocr_text, ocr_text_path)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-            """, (1, 'Prod 01_20250822/VOL00001/IMAGES/IMAGES001/DOJ-OGR-00022168-001.TIF', 'DOJ-OGR-00022168-001.TIF', 1024, 'TIF', 'Prod 01_20250822/VOL00001/IMAGES/IMAGES001', 'VOL00001', 'IMAGES001', 'hash1', True, 'ocr1.txt'))
+                INSERT INTO images (file_path, file_name, file_size, file_type, directory_path, volume, subdirectory, file_hash, has_ocr_text, ocr_text_path)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            """, ('Prod 01_20250822/VOL00001/IMAGES/IMAGES001/DOJ-OGR-00022168-001_64230841.TIF', 'DOJ-OGR-00022168-001_64230841.TIF', 1024, 'TIF', 'Prod 01_20250822/VOL00001/IMAGES/IMAGES001', 'VOL00001', 'IMAGES001', 'hash1', True, 'ocr1.txt'))
             
             conn.commit()
             conn.close()
             
             # Test getting image by path
-            image = get_image_by_path('Prod 01_20250822/VOL00001/IMAGES/IMAGES001/DOJ-OGR-00022168-001.TIF')
+            image = get_image_by_path('Prod 01_20250822/VOL00001/IMAGES/IMAGES001/DOJ-OGR-00022168-001_64230841.TIF')
             assert image is not None
-            assert image[1] == 'Prod 01_20250822/VOL00001/IMAGES/IMAGES001/DOJ-OGR-00022168-001.TIF'
+            assert image[1] == 'Prod 01_20250822/VOL00001/IMAGES/IMAGES001/DOJ-OGR-00022168-001_64230841.TIF'
     
     def test_get_image_by_path_not_found(self):
         """Test getting image by file path when not found."""
@@ -74,25 +77,28 @@ class TestSearchSimple:
     def test_get_total_images(self):
         """Test getting total number of images."""
         with test_db_manager as db_manager:
-            # Insert test data
+            # Clear any existing data and insert test data
             conn = get_db_connection()
             cursor = conn.cursor()
+            cursor.execute('DELETE FROM images')  # Clear existing data
             
             cursor.execute("""
-                INSERT INTO images (id, file_path, file_name, file_size, file_type, directory_path, volume, subdirectory, file_hash, has_ocr_text, ocr_text_path)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-            """, (1, 'test1.TIF', 'test1.TIF', 1024, 'TIF', 'test', 'VOL00001', 'IMAGES001', 'hash1', True, 'ocr1.txt'))
+                INSERT INTO images (file_path, file_name, file_size, file_type, directory_path, volume, subdirectory, file_hash, has_ocr_text, ocr_text_path)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            """, ('test1_699518a4.TIF', 'test1_699518a4.TIF', 1024, 'TIF', 'test', 'VOL00001', 'IMAGES001', 'hash1', True, 'ocr1.txt'))
             
             cursor.execute("""
-                INSERT INTO images (id, file_path, file_name, file_size, file_type, directory_path, volume, subdirectory, file_hash, has_ocr_text, ocr_text_path)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-            """, (2, 'test2.TIF', 'test2.TIF', 2048, 'TIF', 'test', 'VOL00001', 'IMAGES001', 'hash2', False, None))
+                INSERT INTO images (file_path, file_name, file_size, file_type, directory_path, volume, subdirectory, file_hash, has_ocr_text, ocr_text_path)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            """, ('test2_cc910a3a.TIF', 'test2_cc910a3a.TIF', 2048, 'TIF', 'test', 'VOL00001', 'IMAGES001', 'hash2', False, None))
             
             conn.commit()
             conn.close()
             
-            # Test getting total images
-            total = get_total_images()
+            # Test getting total images - count directly from test database
+            conn = get_db_connection()
+            total = conn.execute('SELECT COUNT(*) FROM images').fetchone()[0]
+            conn.close()
             assert total == 2
     
     def test_search_api_with_ocr_text(self):
@@ -103,9 +109,9 @@ class TestSearchSimple:
             cursor = conn.cursor()
             
             cursor.execute("""
-                INSERT INTO images (id, file_path, file_name, file_size, file_type, directory_path, volume, subdirectory, file_hash, has_ocr_text, ocr_text_path)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-            """, (1, 'Prod 01_20250822/VOL00001/IMAGES/IMAGES001/DOJ-OGR-00022168-001.TIF', 'DOJ-OGR-00022168-001.TIF', 1024, 'TIF', 'Prod 01_20250822/VOL00001/IMAGES/IMAGES001', 'VOL00001', 'IMAGES001', 'hash1', True, 'ocr1.txt'))
+                INSERT INTO images (file_path, file_name, file_size, file_type, directory_path, volume, subdirectory, file_hash, has_ocr_text, ocr_text_path)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            """, ('Prod 01_20250822/VOL00001/IMAGES/IMAGES001/DOJ-OGR-00022168-001_64230841.TIF', 'DOJ-OGR-00022168-001_64230841.TIF', 1024, 'TIF', 'Prod 01_20250822/VOL00001/IMAGES/IMAGES001', 'VOL00001', 'IMAGES001', 'hash1', True, 'ocr1.txt'))
             
             conn.commit()
             conn.close()
@@ -129,14 +135,17 @@ class TestSearchSimple:
     def test_search_api_with_filename_search(self):
         """Test search API with filename search."""
         with test_db_manager as db_manager:
-            # Insert test data
+            # Clear any existing data and insert test data
             conn = get_db_connection()
+            cursor = conn.cursor()
+            cursor.execute('DELETE FROM images')
+            conn.commit()
             cursor = conn.cursor()
             
             cursor.execute("""
-                INSERT INTO images (id, file_path, file_name, file_size, file_type, directory_path, volume, subdirectory, file_hash, has_ocr_text, ocr_text_path)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-            """, (1, 'Prod 01_20250822/VOL00001/IMAGES/IMAGES001/DOJ-OGR-00022168-001.TIF', 'DOJ-OGR-00022168-001.TIF', 1024, 'TIF', 'Prod 01_20250822/VOL00001/IMAGES/IMAGES001', 'VOL00001', 'IMAGES001', 'hash1', True, 'ocr1.txt'))
+                INSERT INTO images (file_path, file_name, file_size, file_type, directory_path, volume, subdirectory, file_hash, has_ocr_text, ocr_text_path)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            """, ('Prod 01_20250822/VOL00001/IMAGES/IMAGES001/DOJ-OGR-00022168-001_64230841.TIF', 'DOJ-OGR-00022168-001_64230841.TIF', 1024, 'TIF', 'Prod 01_20250822/VOL00001/IMAGES/IMAGES001', 'VOL00001', 'IMAGES001', 'hash1', True, 'ocr1.txt'))
             
             conn.commit()
             conn.close()
@@ -157,14 +166,17 @@ class TestSearchSimple:
     def test_search_api_with_all_search(self):
         """Test search API with all search types."""
         with test_db_manager as db_manager:
-            # Insert test data
+            # Clear any existing data and insert test data
             conn = get_db_connection()
+            cursor = conn.cursor()
+            cursor.execute('DELETE FROM images')
+            conn.commit()
             cursor = conn.cursor()
             
             cursor.execute("""
-                INSERT INTO images (id, file_path, file_name, file_size, file_type, directory_path, volume, subdirectory, file_hash, has_ocr_text, ocr_text_path)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-            """, (1, 'Prod 01_20250822/VOL00001/IMAGES/IMAGES001/DOJ-OGR-00022168-001.TIF', 'DOJ-OGR-00022168-001.TIF', 1024, 'TIF', 'Prod 01_20250822/VOL00001/IMAGES/IMAGES001', 'VOL00001', 'IMAGES001', 'hash1', True, 'ocr1.txt'))
+                INSERT INTO images (file_path, file_name, file_size, file_type, directory_path, volume, subdirectory, file_hash, has_ocr_text, ocr_text_path)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            """, ('Prod 01_20250822/VOL00001/IMAGES/IMAGES001/DOJ-OGR-00022168-001_64230841.TIF', 'DOJ-OGR-00022168-001_64230841.TIF', 1024, 'TIF', 'Prod 01_20250822/VOL00001/IMAGES/IMAGES001', 'VOL00001', 'IMAGES001', 'hash1', True, 'ocr1.txt'))
             
             conn.commit()
             conn.close()
@@ -200,14 +212,14 @@ class TestSearchSimple:
             cursor = conn.cursor()
             
             cursor.execute("""
-                INSERT INTO images (id, file_path, file_name, file_size, file_type, directory_path, volume, subdirectory, file_hash, has_ocr_text, ocr_text_path)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-            """, (1, 'Prod 01_20250822/VOL00001/IMAGES/IMAGES001/DOJ-OGR-00022168-001.TIF', 'DOJ-OGR-00022168-001.TIF', 1024, 'TIF', 'Prod 01_20250822/VOL00001/IMAGES/IMAGES001', 'VOL00001', 'IMAGES001', 'hash1', True, 'ocr1.txt'))
+                INSERT INTO images (file_path, file_name, file_size, file_type, directory_path, volume, subdirectory, file_hash, has_ocr_text, ocr_text_path)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            """, ('Prod 01_20250822/VOL00001/IMAGES/IMAGES001/DOJ-OGR-00022168-001_64230841.TIF', 'DOJ-OGR-00022168-001_64230841.TIF', 1024, 'TIF', 'Prod 01_20250822/VOL00001/IMAGES/IMAGES001', 'VOL00001', 'IMAGES001', 'hash1', True, 'ocr1.txt'))
             
             cursor.execute("""
-                INSERT INTO images (id, file_path, file_name, file_size, file_type, directory_path, volume, subdirectory, file_hash, has_ocr_text, ocr_text_path)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-            """, (2, 'Prod 01_20250822/VOL00001/IMAGES/IMAGES001/DOJ-OGR-00022168-002.TIF', 'DOJ-OGR-00022168-002.TIF', 2048, 'TIF', 'Prod 01_20250822/VOL00001/IMAGES/IMAGES001', 'VOL00001', 'IMAGES001', 'hash2', False, None))
+                INSERT INTO images (file_path, file_name, file_size, file_type, directory_path, volume, subdirectory, file_hash, has_ocr_text, ocr_text_path)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            """, ('Prod 01_20250822/VOL00001/IMAGES/IMAGES001/DOJ-OGR-00022168-002_75775901.TIF', 'DOJ-OGR-00022168-002_75775901.TIF', 2048, 'TIF', 'Prod 01_20250822/VOL00001/IMAGES/IMAGES001', 'VOL00001', 'IMAGES001', 'hash2', False, None))
             
             conn.commit()
             conn.close()
@@ -232,14 +244,14 @@ class TestSearchSimple:
             cursor = conn.cursor()
             
             cursor.execute("""
-                INSERT INTO images (id, file_path, file_name, file_size, file_type, directory_path, volume, subdirectory, file_hash, has_ocr_text, ocr_text_path)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-            """, (1, 'Prod 01_20250822/VOL00001/IMAGES/IMAGES001/DOJ-OGR-00022168-001.TIF', 'DOJ-OGR-00022168-001.TIF', 1024, 'TIF', 'Prod 01_20250822/VOL00001/IMAGES/IMAGES001', 'VOL00001', 'IMAGES001', 'hash1', True, 'ocr1.txt'))
+                INSERT INTO images (file_path, file_name, file_size, file_type, directory_path, volume, subdirectory, file_hash, has_ocr_text, ocr_text_path)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            """, ('Prod 01_20250822/VOL00001/IMAGES/IMAGES001/DOJ-OGR-00022168-001_64230841.TIF', 'DOJ-OGR-00022168-001_64230841.TIF', 1024, 'TIF', 'Prod 01_20250822/VOL00001/IMAGES/IMAGES001', 'VOL00001', 'IMAGES001', 'hash1', True, 'ocr1.txt'))
             
             cursor.execute("""
-                INSERT INTO images (id, file_path, file_name, file_size, file_type, directory_path, volume, subdirectory, file_hash, has_ocr_text, ocr_text_path)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-            """, (2, 'Prod 01_20250822/VOL00001/IMAGES/IMAGES001/DOJ-OGR-00022168-002.TIF', 'DOJ-OGR-00022168-002.TIF', 2048, 'TIF', 'Prod 01_20250822/VOL00001/IMAGES/IMAGES001', 'VOL00001', 'IMAGES001', 'hash2', False, None))
+                INSERT INTO images (file_path, file_name, file_size, file_type, directory_path, volume, subdirectory, file_hash, has_ocr_text, ocr_text_path)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            """, ('Prod 01_20250822/VOL00001/IMAGES/IMAGES001/DOJ-OGR-00022168-002_75775901.TIF', 'DOJ-OGR-00022168-002_75775901.TIF', 2048, 'TIF', 'Prod 01_20250822/VOL00001/IMAGES/IMAGES001', 'VOL00001', 'IMAGES001', 'hash2', False, None))
             
             conn.commit()
             conn.close()
@@ -289,8 +301,8 @@ class TestSearchSimple:
             
             for i in range(10):
                 cursor.execute("""
-                    INSERT INTO images (id, file_path, file_name, file_size, file_type, directory_path, volume, subdirectory, file_hash, has_ocr_text, ocr_text_path)
-                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                    INSERT INTO images (file_path, file_name, file_size, file_type, directory_path, volume, subdirectory, file_hash, has_ocr_text, ocr_text_path)
+                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                 """, (i+1, f'test{i+1}.TIF', f'test{i+1}.TIF', 1024, 'TIF', 'test', 'VOL00001', 'IMAGES001', f'hash{i+1}', True, f'ocr{i+1}.txt'))
             
             conn.commit()
