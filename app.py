@@ -753,6 +753,11 @@ def help_api():
     """Help API guide page"""
     return render_template('help/api.html')
 
+@app.route('/help/installation')
+def help_installation():
+    """Help installation guide page"""
+    return render_template('help/installation.html')
+
 
 @app.route('/data/screenshots/<filename>')
 def serve_screenshot(filename):

@@ -2,6 +2,13 @@
 
 A simple, Archive.org-style document browser for congressional records released by Congress.
 
+## 📖 Documentation
+
+- **[Installation Guide](http://localhost:8080/help/installation)** - Complete setup instructions for running your own mirror
+- **[API Documentation](http://localhost:8080/help/api)** - Full API reference with examples
+- **[Usage Guide](http://localhost:8080/help/usage)** - How to use the document browser
+- **[Features Overview](http://localhost:8080/help/features)** - Key features and capabilities
+
 ## 🚀 Complete Setup Guide
 
 ### Step 1: Download the Documents

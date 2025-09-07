@@ -121,20 +121,20 @@
                 <div class="row">
                     <div class="col-md-6">
                         <h6>Basic Search</h6>
-                        <div class="alert alert-light">
+                        <div class="help-code">
                             <pre><code>GET {{ request.url_root }}api/search?q=juror</code></pre>
                         </div>
                     </div>
                     <div class="col-md-6">
                         <h6>Advanced Search</h6>
-                        <div class="alert alert-light">
+                        <div class="help-code">
                             <pre><code>GET {{ request.url_root }}api/search?q=testimony&type=ocr&sort=relevance&page=1</code></pre>
                         </div>
                     </div>
                 </div>
                 
                 <h5>Response Format</h5>
-                <div class="alert alert-light">
+                <div class="help-code">
                     <pre><code>{
   "results": [
     {
@@ -177,12 +177,12 @@
                 <p>Returns system statistics including total images, OCR progress, and volume breakdown.</p>
                 
                 <h5>Example Request</h5>
-                <div class="alert alert-light">
+                <div class="help-code">
                     <pre><code>GET {{ request.url_root }}api/stats</code></pre>
                 </div>
                 
                 <h5>Response Format</h5>
-                <div class="alert alert-light">
+                <div class="help-code">
                     <pre><code>{
   "total_images": 24528,
   "images_with_ocr": 12345,
@@ -215,12 +215,12 @@
                 <p>Returns the first and last available image IDs for navigation purposes.</p>
                 
                 <h5>Example Request</h5>
-                <div class="alert alert-light">
+                <div class="help-code">
                     <pre><code>GET {{ request.url_root }}api/first-image</code></pre>
                 </div>
                 
                 <h5>Response Format</h5>
-                <div class="alert alert-light">
+                <div class="help-code">
                     <pre><code>{
   "first_id": 1,
   "last_id": 24528
@@ -254,13 +254,13 @@
                 <div class="row">
                     <div class="col-md-6">
                         <h6>Direct Image</h6>
-                        <div class="alert alert-light">
+                        <div class="help-code">
                             <pre><code>GET {{ request.url_root }}image/Prod%2001_20250822/VOL00001/IMAGES/IMAGES001/DOJ-OGR-00000008.jpg</code></pre>
                         </div>
                     </div>
                     <div class="col-md-6">
                         <h6>Thumbnail</h6>
-                        <div class="alert alert-light">
+                        <div class="help-code">
                             <pre><code>GET {{ request.url_root }}api/thumbnail/123</code></pre>
                         </div>
                     </div>
@@ -341,7 +341,7 @@
             </div>
             <div class="card-body">
                 <h5>JavaScript/Fetch</h5>
-                <div class="alert alert-light">
+                <div class="help-code">
                     <pre><code>// Search for documents
 async function searchDocuments(query) {
   const response = await fetch(`{{ request.url_root }}api/search?q=${encodeURIComponent(query)}`);
@@ -362,7 +362,7 @@ searchDocuments('juror').then(results => {
                 </div>
                 
                 <h5>Python/Requests</h5>
-                <div class="alert alert-light">
+                <div class="help-code">
                     <pre><code>import requests
 
 # Search for documents
@@ -381,7 +381,7 @@ print(f"Found {len(results['results'])} documents")</code></pre>
                 </div>
                 
                 <h5>cURL Examples</h5>
-                <div class="alert alert-light">
+                <div class="help-code">
                     <pre><code># Search for documents
 curl "{{ request.url_root }}api/search?q=juror&type=all"
 
@@ -443,7 +443,7 @@ curl "{{ request.url_root }}image/Prod%2001_20250822/VOL00001/IMAGES/IMAGES001/D
                 </div>
                 
                 <h5>Error Response Format</h5>
-                <div class="alert alert-light">
+                <div class="help-code">
                     <pre><code>{
   "error": "Error message description",
   "results": []
@@ -473,4 +473,45 @@ curl "{{ request.url_root }}image/Prod%2001_20250822/VOL00001/IMAGES/IMAGES001/D
         </div>
     </div>
 </div>
+{% endblock %}
+
+{% block extra_css %}
+<style>
+.help-code {
+    background-color: #f8f9fa;
+    border: 1px solid #e9ecef;
+    border-radius: 0.375rem;
+    padding: 1rem;
+    margin: 0.5rem 0;
+}
+
+.help-code pre {
+    margin: 0;
+    color: #495057;
+    font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace;
+    font-size: 0.875rem;
+    line-height: 1.4;
+}
+
+.help-code code {
+    background: none;
+    padding: 0;
+    color: inherit;
+    font-size: inherit;
+}
+
+/* Syntax highlighting for code blocks */
+.help-code pre code {
+    color: #2d3748;
+}
+
+/* Inline code styling */
+code:not(.help-code code) {
+    background-color: #e2e8f0;
+    color: #2d3748;
+    padding: 0.125rem 0.25rem;
+    border-radius: 0.25rem;
+    font-size: 0.875em;
+}
+</style>
 {% endblock %}

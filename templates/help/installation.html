@@ -1,0 +1,351 @@
+{% extends "base.html" %}
+
+{% block title %}Installation Guide - Help & Documentation{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <div class="row">
+        <div class="col-lg-8">
+            <div class="card">
+                <div class="card-header">
+                    <h1><i class="fas fa-download me-2"></i>Installation Guide</h1>
+                    <p class="mb-0 text-muted">Set up your own mirror of the Epstein Documents Browser</p>
+                </div>
+                <div class="card-body">
+                    <div class="alert alert-info">
+                        <i class="fas fa-info-circle me-2"></i>
+                        <strong>Why run your own instance?</strong> Running your own mirror helps with decentralization, 
+                        allows for custom queries, and ensures data availability even if the main site is unavailable.
+                    </div>
+
+                    <h2><i class="fas fa-server me-2"></i>System Requirements</h2>
+                    <div class="row">
+                        <div class="col-md-6">
+                            <h5>Minimum Requirements</h5>
+                            <ul>
+                                <li><strong>CPU:</strong> 2 cores, 2.0 GHz</li>
+                                <li><strong>RAM:</strong> 4 GB</li>
+                                <li><strong>Storage:</strong> 50 GB free space</li>
+                                <li><strong>OS:</strong> Windows 10+, macOS 10.14+, or Linux</li>
+                            </ul>
+                        </div>
+                        <div class="col-md-6">
+                            <h5>Recommended</h5>
+                            <ul>
+                                <li><strong>CPU:</strong> 4+ cores, 3.0+ GHz</li>
+                                <li><strong>RAM:</strong> 8+ GB</li>
+                                <li><strong>Storage:</strong> 100+ GB SSD</li>
+                                <li><strong>Network:</strong> Stable internet connection</li>
+                            </ul>
+                        </div>
+                    </div>
+
+                    <h2><i class="fas fa-code me-2"></i>Prerequisites</h2>
+                    <p>Before installing, ensure you have the following software installed:</p>
+                    
+                    <h4>Python 3.8+</h4>
+                    <div class="help-code">
+                        <pre><code># Check Python version
+python --version
+
+# If not installed, download from:
+# https://www.python.org/downloads/</code></pre>
+                    </div>
+
+                    <h4>Git</h4>
+                    <div class="help-code">
+                        <pre><code># Check Git installation
+git --version
+
+# If not installed, download from:
+# https://git-scm.com/downloads</code></pre>
+                    </div>
+
+                    <h2><i class="fas fa-download me-2"></i>Installation Steps</h2>
+                    
+                    <h3>Step 1: Clone the Repository</h3>
+                    <div class="help-code">
+                        <pre><code># Clone the repository
+git clone https://github.com/gopoversight/epstein-documents-browser.git
+cd epstein-documents-browser</code></pre>
+                    </div>
+
+                    <h3>Step 2: Set Up Python Environment</h3>
+                    <div class="help-code">
+                        <pre><code># Create virtual environment
+python -m venv venv
+
+# Activate virtual environment
+# On Windows:
+venv\Scripts\activate
+# On macOS/Linux:
+source venv/bin/activate
+
+# Install dependencies
+pip install -r requirements.txt</code></pre>
+                    </div>
+
+                    <h3>Step 3: Configure the Application</h3>
+                    <p>Create a configuration file for your instance:</p>
+                    <div class="help-code">
+                        <pre><code># Create config.py
+cat > config.py << EOF
+import os
+
+# Data directory (where documents will be stored)
+DATA_DIR = os.path.join(os.path.dirname(__file__), 'data')
+
+# Database file
+DATABASE = 'images.db'
+
+# API configuration
+API_BASE_URL = 'https://epstein-documents.gopoversight.com'
+API_ENDPOINTS = {
+    'search': '/api/search',
+    'stats': '/api/stats',
+    'first_image': '/api/first-image',
+    'image': '/image/',
+    'thumbnail': '/api/thumbnail/'
+}
+
+# Sync settings
+SYNC_INTERVAL = 3600  # Sync every hour
+BATCH_SIZE = 100      # Process 100 documents at a time
+EOF</code></pre>
+                    </div>
+
+                    <h3>Step 4: Initialize the Database</h3>
+                    <div class="help-code">
+                        <pre><code># Initialize the database
+python -c "
+from app import init_database, init_analytics_table
+init_database()
+init_analytics_table()
+print('Database initialized successfully!')
+"</code></pre>
+                    </div>
+
+                    <h2><i class="fas fa-sync me-2"></i>Data Synchronization</h2>
+                    <p>The application can sync data from the main instance using the API. This allows you to get the latest documents and metadata without hosting the original files.</p>
+
+                    <h3>Manual Sync</h3>
+                    <div class="help-code">
+                        <pre><code># Run the sync script
+python sync_data.py
+
+# Or sync specific components
+python sync_data.py --images-only
+python sync_data.py --metadata-only</code></pre>
+                    </div>
+
+                    <h3>Automatic Sync</h3>
+                    <p>Set up a cron job (Linux/macOS) or scheduled task (Windows) to sync automatically:</p>
+                    <div class="help-code">
+                        <pre><code># Linux/macOS cron job (sync every hour)
+# Add to crontab: crontab -e
+0 * * * * cd /path/to/epstein-documents-browser && python sync_data.py
+
+# Windows Task Scheduler
+# Create a task that runs: python sync_data.py
+# Set trigger to repeat every hour</code></pre>
+                    </div>
+
+                    <h2><i class="fas fa-play me-2"></i>Running the Application</h2>
+                    
+                    <h3>Development Mode</h3>
+                    <div class="help-code">
+                        <pre><code># Start the Flask development server
+python app.py
+
+# The application will be available at:
+# http://localhost:5000</code></pre>
+                    </div>
+
+                    <h3>Production Mode</h3>
+                    <div class="help-code">
+                        <pre><code># Using Gunicorn (recommended for production)
+pip install gunicorn
+gunicorn -w 4 -b 0.0.0.0:8000 app:app
+
+# Using uWSGI
+pip install uwsgi
+uwsgi --http :8000 --module app:app --processes 4 --threads 2</code></pre>
+                    </div>
+
+                    <h2><i class="fas fa-cog me-2"></i>Configuration Options</h2>
+                    
+                    <h3>Environment Variables</h3>
+                    <div class="help-code">
+                        <pre><code># Set environment variables
+export FLASK_ENV=production
+export FLASK_DEBUG=False
+export DATABASE_URL=sqlite:///images.db
+export DATA_DIR=/path/to/data
+export API_BASE_URL=https://epstein-documents.gopoversight.com</code></pre>
+                    </div>
+
+                    <h3>Custom Styling</h3>
+                    <p>You can customize the appearance by modifying the CSS files in the <code>static/css/</code> directory or by overriding templates in the <code>templates/</code> directory.</p>
+
+                    <h2><i class="fas fa-shield-alt me-2"></i>Security Considerations</h2>
+                    <ul>
+                        <li><strong>Firewall:</strong> Configure your firewall to only allow necessary ports</li>
+                        <li><strong>HTTPS:</strong> Use SSL certificates for production deployments</li>
+                        <li><strong>Updates:</strong> Keep the application and dependencies updated</li>
+                        <li><strong>Backups:</strong> Regularly backup your database and configuration</li>
+                        <li><strong>Access Control:</strong> Consider implementing authentication if needed</li>
+                    </ul>
+
+                    <h2><i class="fas fa-tools me-2"></i>Troubleshooting</h2>
+                    
+                    <h3>Common Issues</h3>
+                    
+                    <h4>Database Connection Errors</h4>
+                    <div class="help-code">
+                        <pre><code># Check database file permissions
+ls -la images.db
+
+# Recreate database if corrupted
+rm images.db
+python -c "from app import init_database; init_database()"</code></pre>
+                    </div>
+
+                    <h4>API Connection Issues</h4>
+                    <div class="help-code">
+                        <pre><code># Test API connectivity
+curl -I https://epstein-documents.gopoversight.com/api/stats
+
+# Check network connectivity
+ping epstein-documents.gopoversight.com</code></pre>
+                    </div>
+
+                    <h4>Memory Issues</h4>
+                    <div class="help-code">
+                        <pre><code># Monitor memory usage
+python -c "
+import psutil
+print(f'Memory usage: {psutil.virtual_memory().percent}%')
+print(f'Available: {psutil.virtual_memory().available / 1024**3:.1f} GB')
+"</code></pre>
+                    </div>
+
+                    <h3>Logs and Debugging</h3>
+                    <div class="help-code">
+                        <pre><code># Enable debug logging
+export FLASK_DEBUG=1
+export FLASK_ENV=development
+
+# View application logs
+tail -f app.log
+
+# Check system resources
+htop  # or top on some systems</code></pre>
+                    </div>
+
+                    <h2><i class="fas fa-question-circle me-2"></i>Getting Help</h2>
+                    <p>If you encounter issues during installation or setup:</p>
+                    <ul>
+                        <li>Check the <a href="{{ url_for('help_usage') }}">Usage Guide</a> for common questions</li>
+                        <li>Review the <a href="{{ url_for('help_api') }}">API Documentation</a> for integration details</li>
+                        <li>Check the GitHub repository for issues and discussions</li>
+                        <li>Ensure all prerequisites are properly installed</li>
+                    </ul>
+
+                    <div class="alert alert-success">
+                        <i class="fas fa-check-circle me-2"></i>
+                        <strong>Success!</strong> Once installed, your instance will be able to sync data from the main repository 
+                        and provide the same search and browsing capabilities locally.
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="col-lg-4">
+            <div class="card">
+                <div class="card-header">
+                    <h5><i class="fas fa-link me-2"></i>Quick Links</h5>
+                </div>
+                <div class="card-body">
+                    <div class="d-grid gap-2">
+                        <a href="{{ url_for('help_overview') }}" class="btn btn-outline-primary">
+                            <i class="fas fa-info-circle me-1"></i>Project Overview
+                        </a>
+                        <a href="{{ url_for('help_features') }}" class="btn btn-outline-info">
+                            <i class="fas fa-star me-1"></i>Features
+                        </a>
+                        <a href="{{ url_for('help_usage') }}" class="btn btn-outline-success">
+                            <i class="fas fa-play me-1"></i>Usage Guide
+                        </a>
+                        <a href="{{ url_for('help_api') }}" class="btn btn-outline-warning">
+                            <i class="fas fa-code me-1"></i>API Guide
+                        </a>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="card mt-3">
+                <div class="card-header">
+                    <h5><i class="fas fa-download me-2"></i>Data Sources</h5>
+                </div>
+                <div class="card-body">
+                    <p><strong>Primary Source:</strong></p>
+                    <p><a href="https://x.com/GOPoversight/status/1963000009777123686" target="_blank" class="btn btn-sm btn-outline-primary">
+                        <i class="fab fa-twitter me-1"></i>GOP Oversight
+                    </a></p>
+                    
+                    <p><strong>API Endpoint:</strong></p>
+                    <code>https://epstein-documents.gopoversight.com</code>
+                    
+                    <hr>
+                    
+                    <p class="small text-muted">
+                        The application syncs data and metadata from the main instance, 
+                        allowing you to run independent queries while staying up-to-date.
+                    </p>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_css %}
+<style>
+.help-code {
+    background-color: #f8f9fa;
+    border: 1px solid #e9ecef;
+    border-radius: 0.375rem;
+    padding: 1rem;
+    margin: 0.5rem 0;
+}
+
+.help-code pre {
+    margin: 0;
+    color: #495057;
+    font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace;
+    font-size: 0.875rem;
+    line-height: 1.4;
+}
+
+.help-code code {
+    background: none;
+    padding: 0;
+    color: inherit;
+    font-size: inherit;
+}
+
+/* Syntax highlighting for code blocks */
+.help-code pre code {
+    color: #2d3748;
+}
+
+/* Inline code styling */
+code:not(.help-code code) {
+    background-color: #e2e8f0;
+    color: #2d3748;
+    padding: 0.125rem 0.25rem;
+    border-radius: 0.25rem;
+    font-size: 0.875em;
+}
+</style>
+{% endblock %}
