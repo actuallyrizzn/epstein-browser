@@ -14,7 +14,7 @@ import json
 os.environ['FLASK_ENV'] = 'testing'
 
 # Import test database manager
-from tests.test_database import test_db_manager
+from test_database import test_db_manager
 
 # Import after setting environment variables
 from app import app, get_db_connection, init_database, rate_limiter

@@ -12,7 +12,7 @@ os.environ['DATABASE_PATH'] = ':memory:'
 os.environ['DATA_DIR'] = 'tests/fixtures/test_data'
 
 from app import app, get_db_connection
-from tests.test_database import test_db_manager
+from test_database import test_db_manager
 
 
 class TestAppRoutes:

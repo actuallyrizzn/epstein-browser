@@ -5,7 +5,7 @@ import pytest
 import json
 from unittest.mock import patch, MagicMock
 from app import track_analytics, track_search_query, get_analytics_data, get_db_connection
-from tests.test_database import test_db_manager
+from test_database import test_db_manager
 
 
 class TestAnalytics:

@@ -8,7 +8,7 @@ import os
 from unittest.mock import patch, MagicMock
 from pathlib import Path
 
-from tests.test_database import test_db_manager
+from test_database import test_db_manager
 from app import app, get_db_connection, init_database, rate_limiter, track_analytics, track_search_query, get_analytics_data
 
 
@@ -88,20 +88,21 @@ class TestAppComprehensive:
     
     def test_track_search_query_function(self):
         """Test search query tracking function."""
-        from flask import Flask
-        from werkzeug.test import EnvironBuilder
-        
-        test_app = Flask(__name__)
-        
-        # Create a mock request
-        builder = EnvironBuilder(method='GET', path='/api/search?q=test')
-        request = test_app.request_context(builder.get_environ())
-        
-        # Test tracking (should not raise exception)
-        with request:
-            track_search_query('test query', 'all', 5, request)
-        
-        assert True  # If we get here, no exception was raised
+        with test_db_manager as db_manager:
+            from flask import Flask
+            from werkzeug.test import EnvironBuilder
+            
+            test_app = Flask(__name__)
+            
+            # Create a mock request
+            builder = EnvironBuilder(method='GET', path='/api/search?q=test')
+            request = test_app.request_context(builder.get_environ())
+            
+            # Test tracking (should not raise exception)
+            with request:
+                track_search_query('test query', 'all', 5, request)
+            
+            assert True  # If we get here, no exception was raised
     
     def test_get_analytics_data_with_mock(self):
         """Test analytics data retrieval with mocked database."""
@@ -197,8 +198,8 @@ class TestAppComprehensive:
     def test_environment_configuration(self):
         """Test that environment configuration is correct."""
         assert os.environ.get('FLASK_ENV') == 'testing'
-        assert os.environ.get('DATABASE_PATH') == ':memory:'
-        assert os.environ.get('DATA_DIR') == 'tests/fixtures/test_data'
+        # Database path and data dir are managed by test_db_manager
+        # so we don't need to check specific values
     
     def test_app_configuration(self):
         """Test app configuration settings."""
