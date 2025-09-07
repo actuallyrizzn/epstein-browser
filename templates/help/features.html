@@ -19,10 +19,8 @@
             Key Features
         </h1>
 
-<!-- Document Viewer Features -->
-<div class="row mb-4">
-    <div class="col-12">
-        <div class="card">
+        <!-- Document Viewer Features -->
+        <div class="card mb-4">
             <div class="card-header">
                 <h3><i class="fas fa-eye me-2"></i>Document Viewer</h3>
             </div>
@@ -51,7 +49,14 @@
             </div>
         </div>
     </div>
+    
+    <div class="col-lg-4">
+        {% include 'help/_quick_links.html' %}
+    </div>
 </div>
+
+<div class="row">
+    <div class="col-12">
 
 <!-- Search & Discovery Features -->
 <div class="row mb-4">
@@ -215,11 +220,6 @@
                 </div>
             </div>
         </div>
-    </div>
-</div>
-    
-    <div class="col-lg-4">
-        {% include 'help/_quick_links.html' %}
     </div>
 </div>
 {% endblock %}

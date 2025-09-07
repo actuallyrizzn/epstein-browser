@@ -13,22 +13,18 @@
                 <li class="breadcrumb-item active" aria-current="page">API Guide</li>
             </ol>
         </nav>
-        
+
         <h1 class="mb-4">
             <i class="fas fa-code me-2"></i>
             API Guide
         </h1>
         <p class="lead">
-            The Epstein Documents Browser provides a comprehensive REST API for programmatic access to documents, 
+            The Epstein Documents Browser provides a comprehensive REST API for programmatic access to documents,
             search functionality, and system statistics.
         </p>
-    </div>
-</div>
 
-<!-- API Overview -->
-<div class="row mb-4">
-    <div class="col-12">
-        <div class="card">
+        <!-- API Overview -->
+        <div class="card mb-4">
             <div class="card-header">
                 <h3><i class="fas fa-info-circle me-2"></i>API Overview</h3>
             </div>
@@ -58,7 +54,14 @@
             </div>
         </div>
     </div>
+    
+    <div class="col-lg-4">
+        {% include 'help/_quick_links.html' %}
+    </div>
 </div>
+
+<div class="row">
+    <div class="col-12">
 
 <!-- Search API -->
 <div class="row mb-4">
@@ -451,11 +454,6 @@ curl "{{ request.url_root }}image/Prod%2001_20250822/VOL00001/IMAGES/IMAGES001/D
                 </div>
             </div>
         </div>
-    </div>
-</div>
-    
-    <div class="col-lg-4">
-        {% include 'help/_quick_links.html' %}
     </div>
 </div>
 {% endblock %}

@@ -13,18 +13,14 @@
                 <li class="breadcrumb-item active" aria-current="page">Usage Guide</li>
             </ol>
         </nav>
-        
+
         <h1 class="mb-4">
             <i class="fas fa-play me-2"></i>
             Usage Guide
         </h1>
-    </div>
-</div>
 
-<!-- Getting Started -->
-<div class="row mb-4">
-    <div class="col-12">
-        <div class="card">
+        <!-- Getting Started -->
+        <div class="card mb-4">
             <div class="card-header">
                 <h3><i class="fas fa-rocket me-2"></i>Getting Started</h3>
             </div>
@@ -37,18 +33,25 @@
                     <li><strong>Search</strong> - Use the search box to find documents by filename or content</li>
                     <li><strong>View OCR Text</strong> - Extracted text appears in the right panel when available</li>
                 </ol>
-                
+
                 <div class="alert alert-info">
                     <h6><i class="fas fa-lightbulb me-2"></i>Pro Tip</h6>
                     <p class="mb-0">
-                        Start by browsing a few documents to get familiar with the interface, then try searching for specific terms 
+                        Start by browsing a few documents to get familiar with the interface, then try searching for specific terms
                         to see how the OCR text search works.
                     </p>
                 </div>
             </div>
         </div>
     </div>
+    
+    <div class="col-lg-4">
+        {% include 'help/_quick_links.html' %}
+    </div>
 </div>
+
+<div class="row">
+    <div class="col-12">
 
 <!-- Keyboard Shortcuts -->
 <div class="row mb-4">
@@ -298,11 +301,6 @@
                 </div>
             </div>
         </div>
-    </div>
-</div>
-    
-    <div class="col-lg-4">
-        {% include 'help/_quick_links.html' %}
     </div>
 </div>
 {% endblock %}
