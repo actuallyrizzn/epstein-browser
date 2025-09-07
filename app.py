@@ -758,6 +758,15 @@ def help_installation():
     """Help installation guide page"""
     return render_template('help/installation.html')
 
+@app.route('/help/context')
+def help_context():
+    """Help context and official sources page"""
+    conn = get_db_connection()
+    total_images = conn.execute('SELECT COUNT(*) FROM images').fetchone()[0]
+    conn.close()
+    
+    return render_template('help/context.html', total_images=total_images)
+
 
 @app.route('/data/screenshots/<filename>')
 def serve_screenshot(filename):

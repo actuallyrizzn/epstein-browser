@@ -8,6 +8,7 @@ A simple, Archive.org-style document browser for congressional records released 
 - **[API Documentation](http://localhost:8080/help/api)** - Full API reference with examples
 - **[Usage Guide](http://localhost:8080/help/usage)** - How to use the document browser
 - **[Features Overview](http://localhost:8080/help/features)** - Key features and capabilities
+- **[Official Context](http://localhost:8080/help/context)** - Congressional sources and official document releases
 
 ## 🚀 Complete Setup Guide
 

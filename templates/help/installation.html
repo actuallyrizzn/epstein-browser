@@ -98,19 +98,10 @@ DATA_DIR = os.path.join(os.path.dirname(__file__), 'data')
 # Database file
 DATABASE = 'images.db'
 
-# API configuration
-API_BASE_URL = 'https://epstein-documents.gopoversight.com'
-API_ENDPOINTS = {
-    'search': '/api/search',
-    'stats': '/api/stats',
-    'first_image': '/api/first-image',
-    'image': '/image/',
-    'thumbnail': '/api/thumbnail/'
-}
-
-# Sync settings
-SYNC_INTERVAL = 3600  # Sync every hour
-BATCH_SIZE = 100      # Process 100 documents at a time
+# Application settings
+DEBUG = False
+HOST = '0.0.0.0'
+PORT = 5000
 EOF</code></pre>
                     </div>
 
@@ -125,29 +116,35 @@ print('Database initialized successfully!')
 "</code></pre>
                     </div>
 
-                    <h2><i class="fas fa-sync me-2"></i>Data Synchronization</h2>
-                    <p>The application can sync data from the main instance using the API. This allows you to get the latest documents and metadata without hosting the original files.</p>
+                    <h2><i class="fas fa-download me-2"></i>Document Setup</h2>
+                    <p>This application works with local document files. You'll need to download the documents from the official sources and place them in the correct directory structure.</p>
 
-                    <h3>Manual Sync</h3>
+                    <h3>Download Documents</h3>
                     <div class="help-code">
-                        <pre><code># Run the sync script
-python sync_data.py
+                        <pre><code># Create data directory
+mkdir -p data
 
-# Or sync specific components
-python sync_data.py --images-only
-python sync_data.py --metadata-only</code></pre>
+# Download from Google Drive (primary source)
+# https://drive.google.com/drive/folders/1TrGxDGQLDLZu1vvvZDBAh-e7wN3y6Hoz
+
+# Or use Dropbox backup
+# https://www.dropbox.com/scl/fo/98fthv8otekjk28lcrnc5/AIn3egnE58MYe4Bn4fliVBw</code></pre>
                     </div>
 
-                    <h3>Automatic Sync</h3>
-                    <p>Set up a cron job (Linux/macOS) or scheduled task (Windows) to sync automatically:</p>
+                    <h3>Directory Structure</h3>
+                    <p>Ensure your documents are organized in the following structure:</p>
                     <div class="help-code">
-                        <pre><code># Linux/macOS cron job (sync every hour)
-# Add to crontab: crontab -e
-0 * * * * cd /path/to/epstein-documents-browser && python sync_data.py
-
-# Windows Task Scheduler
-# Create a task that runs: python sync_data.py
-# Set trigger to repeat every hour</code></pre>
+                        <pre><code>data/
+└── Prod 01_20250822/
+    └── VOL00001/
+        ├── IMAGES/
+        │   ├── IMAGES001/
+        │   ├── IMAGES002/
+        │   └── ... (IMAGES003 through IMAGES012)
+        └── NATIVES/
+            ├── NATIVE006/
+            ├── NATIVE008/
+            └── ... (other NATIVE directories)</code></pre>
                     </div>
 
                     <h2><i class="fas fa-play me-2"></i>Running the Application</h2>
@@ -180,8 +177,7 @@ uwsgi --http :8000 --module app:app --processes 4 --threads 2</code></pre>
 export FLASK_ENV=production
 export FLASK_DEBUG=False
 export DATABASE_URL=sqlite:///images.db
-export DATA_DIR=/path/to/data
-export API_BASE_URL=https://epstein-documents.gopoversight.com</code></pre>
+export DATA_DIR=/path/to/data</code></pre>
                     </div>
 
                     <h3>Custom Styling</h3>
@@ -288,19 +284,24 @@ htop  # or top on some systems</code></pre>
                     <h5><i class="fas fa-download me-2"></i>Data Sources</h5>
                 </div>
                 <div class="card-body">
-                    <p><strong>Primary Source:</strong></p>
-                    <p><a href="https://x.com/GOPoversight/status/1963000009777123686" target="_blank" class="btn btn-sm btn-outline-primary">
-                        <i class="fab fa-twitter me-1"></i>GOP Oversight
+                    <p><strong>Official Release:</strong></p>
+                    <p><a href="https://oversight.house.gov/release/oversight-committee-releases-epstein-records-provided-by-the-department-of-justice/" target="_blank" class="btn btn-sm btn-outline-primary">
+                        <i class="fas fa-landmark me-1"></i>House Oversight
                     </a></p>
                     
-                    <p><strong>API Endpoint:</strong></p>
-                    <code>https://epstein-documents.gopoversight.com</code>
+                    <p><strong>Document Sources:</strong></p>
+                    <p><a href="https://drive.google.com/drive/folders/1TrGxDGQLDLZu1vvvZDBAh-e7wN3y6Hoz" target="_blank" class="btn btn-sm btn-outline-success">
+                        <i class="fab fa-google-drive me-1"></i>Google Drive
+                    </a></p>
+                    
+                    <p><strong>Note:</strong></p>
+                    <p class="small text-muted">This browser currently works with local document files. API synchronization features are planned for future development.</p>
                     
                     <hr>
                     
                     <p class="small text-muted">
-                        The application syncs data and metadata from the main instance, 
-                        allowing you to run independent queries while staying up-to-date.
+                        <a href="{{ url_for('help_context') }}">View complete official context</a> including 
+                        congressional sources, subpoena details, and document access information.
                     </p>
                 </div>
             </div>
