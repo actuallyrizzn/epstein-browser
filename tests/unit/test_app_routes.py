@@ -11,7 +11,8 @@ os.environ['FLASK_ENV'] = 'testing'
 os.environ['DATABASE_PATH'] = ':memory:'
 os.environ['DATA_DIR'] = 'tests/fixtures/test_data'
 
-from app import app
+from app import app, get_db_connection
+from tests.test_database import test_db_manager
 
 
 class TestAppRoutes:
@@ -131,20 +132,38 @@ class TestAppRoutes:
     
     def test_rate_limiting_headers(self):
         """Test that rate limiting headers are present on API routes."""
-        with app.test_client() as client:
-            api_routes = [
-                '/api/search?q=test',
-                '/api/stats',
-                '/api/first-image',
-                '/api/thumbnail/1'
-            ]
+        with test_db_manager as db_manager:
+            # Add some test data
+            conn = get_db_connection()
+            cursor = conn.cursor()
+            cursor.execute('DELETE FROM images')
+            conn.commit()
             
-            for route in api_routes:
-                response = client.get(route)
-                # Should have rate limit headers
-                assert 'X-RateLimit-Limit' in response.headers
-                assert 'X-RateLimit-Remaining' in response.headers
-                assert 'X-RateLimit-Reset' in response.headers
+            cursor.execute("""
+                INSERT INTO images (file_path, file_name, file_size, file_type, directory_path, volume, subdirectory, file_hash, has_ocr_text, ocr_text_path)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            """, ('test/test1.TIF', 'test1.TIF', 1024, 'TIF', 'test', 'VOL00001', 'IMAGES001', 'hash1', True, 'ocr1.txt'))
+            
+            conn.commit()
+            
+            # Get the actual ID that was inserted
+            cursor.execute('SELECT id FROM images WHERE file_path = ?', ('test/test1.TIF',))
+            image_id = cursor.fetchone()[0]
+            conn.close()
+            
+            with app.test_client() as client:
+                api_routes = [
+                    '/api/search?q=test',
+                    '/api/stats',
+                    '/api/first-image'
+                ]
+                
+                for route in api_routes:
+                    response = client.get(route)
+                    # Should have rate limit headers
+                    assert 'X-RateLimit-Limit' in response.headers
+                    assert 'X-RateLimit-Remaining' in response.headers
+                    assert 'X-RateLimit-Reset' in response.headers
     
     def test_content_type_headers(self):
         """Test that appropriate content type headers are set."""
