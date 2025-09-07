@@ -228,10 +228,15 @@
     // Random document function
     function randomDocument() {
         const totalImages = {{ total_images }};
+        {% if first_image %}
         const firstId = {{ first_image.id }};
         const lastId = firstId + totalImages - 1;
         const randomId = Math.floor(Math.random() * totalImages) + firstId;
         window.location.href = `/view/${randomId}`;
+        {% else %}
+        // No images available
+        alert('No documents available at this time.');
+        {% endif %}
     }
 
     // Search function

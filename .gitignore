@@ -54,3 +54,4 @@ ssh-config
 .env.local
 .env.production
 .env.staging
+images.db-journal

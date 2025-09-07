@@ -34,6 +34,7 @@ from PIL import Image
 import io
 from dotenv import load_dotenv
 from collections import defaultdict, deque
+from functools import wraps
 
 # Load environment variables from .env file
 load_dotenv()
@@ -269,9 +270,91 @@ def init_database(conn=None):
     if created_conn:
         conn.close()
 
+# Database lock handling
+class DatabaseLockError(Exception):
+    """Custom exception for database lock situations"""
+    pass
+
+
 # Initialize database tables only in production
 if IS_PRODUCTION:
     init_database()
+
+
+# Error handlers for database lock situations
+@app.errorhandler(DatabaseLockError)
+def handle_database_lock(error):
+    """Handle database lock errors with a user-friendly page"""
+    app.logger.warning(f"Database lock detected: {error}")
+    return render_template('server_busy.html'), 503
+
+
+@app.errorhandler(503)
+def handle_service_unavailable(error):
+    """Handle 503 Service Unavailable errors"""
+    return render_template('server_busy.html'), 503
+
+
+def handle_db_operations(max_retries=3, retry_delay=0.1, timeout=5.0):
+    """
+    Decorator to handle database operations with retry logic and lock detection.
+    
+    Args:
+        max_retries: Maximum number of retry attempts
+        retry_delay: Delay between retries in seconds
+        timeout: Maximum time to wait for database operations
+    """
+    def decorator(func):
+        @wraps(func)
+        def wrapper(*args, **kwargs):
+            last_error = None
+            
+            for attempt in range(max_retries + 1):
+                try:
+                    # Set a timeout for the database operation
+                    start_time = time.time()
+                    
+                    # Execute the function with timeout monitoring
+                    result = func(*args, **kwargs)
+                    
+                    # Check if operation took too long
+                    elapsed = time.time() - start_time
+                    if elapsed > timeout:
+                        raise DatabaseLockError(f"Database operation timed out after {elapsed:.2f}s")
+                    
+                    return result
+                    
+                except sqlite3.OperationalError as e:
+                    last_error = e
+                    error_msg = str(e).lower()
+                    
+                    # Check for specific lock-related errors
+                    if any(keyword in error_msg for keyword in ['database is locked', 'database locked', 'busy']):
+                        if attempt < max_retries:
+                            app.logger.warning(f"Database locked on attempt {attempt + 1}, retrying in {retry_delay}s...")
+                            time.sleep(retry_delay)
+                            continue
+                        else:
+                            app.logger.error(f"Database locked after {max_retries} retries: {e}")
+                            raise DatabaseLockError("Database is currently busy. Please try again in a moment.")
+                    else:
+                        # Other database errors - don't retry
+                        raise e
+                        
+                except Exception as e:
+                    # Non-database errors - don't retry
+                    raise e
+            
+            # If we get here, all retries failed
+            raise last_error
+            
+        return wrapper
+    return decorator
+
+
+def get_db_connection_with_retry():
+    """Get database connection with retry logic for lock situations."""
+    return handle_db_operations()(get_db_connection)()
 
 
 def track_analytics(request, response, response_time):
@@ -483,25 +566,35 @@ def get_blog_post(slug):
 
 
 @app.route('/')
+@handle_db_operations()
 def index():
     """Homepage - show first image"""
     total_images = get_total_images()
     if total_images == 0:
-        return render_template('index.html', total_images=0)
+        return render_template('index.html', total_images=0, first_image=None)
     
     # Get first available image ID
     conn = get_db_connection()
-    first_id = conn.execute('SELECT MIN(id) FROM images').fetchone()[0]
+    first_result = conn.execute('SELECT MIN(id) FROM images').fetchone()
     conn.close()
+    
+    if not first_result or not first_result[0]:
+        return render_template('index.html', total_images=0, first_image=None)
+    
+    first_id = first_result[0]
     
     # Get first image
     first_image = get_image_by_id(first_id)
+    if not first_image:
+        return render_template('index.html', total_images=0, first_image=None)
+    
     return render_template('index.html', 
                          total_images=total_images,
                          first_image=first_image)
 
 
 @app.route('/view/<int:image_id>')
+@handle_db_operations()
 def view_image(image_id):
     """View a specific image"""
     image = get_image_by_id(image_id)
@@ -510,17 +603,35 @@ def view_image(image_id):
     
     total_images = get_total_images()
     
-    # Get previous and next image IDs
-    prev_id = image_id - 1 if image_id > 1 else None
-    next_id = image_id + 1 if image_id < total_images else None
+    # Get previous and next image IDs using actual database queries
+    conn = get_db_connection()
+    
+    # Get previous image ID (highest ID less than current)
+    prev_result = conn.execute('SELECT id FROM images WHERE id < ? ORDER BY id DESC LIMIT 1', (image_id,)).fetchone()
+    prev_id = prev_result[0] if prev_result else None
+    
+    # Get next image ID (lowest ID greater than current)
+    next_result = conn.execute('SELECT id FROM images WHERE id > ? ORDER BY id ASC LIMIT 1', (image_id,)).fetchone()
+    next_id = next_result[0] if next_result else None
+    
+    # Get first and last image IDs for progress calculation
+    first_result = conn.execute('SELECT MIN(id) FROM images').fetchone()
+    last_result = conn.execute('SELECT MAX(id) FROM images').fetchone()
+    first_id = first_result[0] if first_result else image_id
+    last_id = last_result[0] if last_result else image_id
+    
+    conn.close()
     
     # Get OCR text if available
     ocr_text = None
     if image['has_ocr_text']:
         ocr_text = get_ocr_text(image['file_path'])
     
-    # Calculate progress
-    progress_percent = (image_id / total_images * 100) if total_images > 0 else 0
+    # Calculate progress based on position in the actual ID range
+    if last_id > first_id:
+        progress_percent = ((image_id - first_id) / (last_id - first_id) * 100)
+    else:
+        progress_percent = 100.0  # Only one image
     
     return render_template('viewer.html',
                          image=image,
@@ -625,6 +736,7 @@ def serve_thumbnail(image_id):
 
 @app.route('/api/stats')
 @rate_limit('stats')
+@handle_db_operations()
 def api_stats():
     """Get statistics"""
     conn = get_db_connection()
@@ -658,6 +770,7 @@ def api_stats():
 
 @app.route('/api/search')
 @rate_limit('search')
+@handle_db_operations()
 def api_search():
     """Search images by filename and OCR text content with advanced filtering"""
     query = request.args.get('q', '').strip()
@@ -830,6 +943,7 @@ def api_search():
 
 @app.route('/api/first-image')
 @rate_limit('stats')
+@handle_db_operations()
 def api_first_image():
     """Get the first available image ID"""
     conn = get_db_connection()
@@ -1000,6 +1114,29 @@ def blog_post(slug):
     post['html_content'] = md.convert(post['content'])
     
     return render_template('blog_post.html', post=post)
+
+
+@app.route('/test-db-lock')
+def test_db_lock():
+    """Test route to simulate database lock (for testing only)"""
+    if not app.config['DEBUG']:
+        abort(404)
+    
+    # Simulate a database lock by creating a long-running transaction
+    conn = get_db_connection()
+    cursor = conn.cursor()
+    
+    # Start a transaction and hold it open
+    cursor.execute('BEGIN IMMEDIATE')
+    cursor.execute('SELECT COUNT(*) FROM images')
+    
+    # Sleep for a few seconds to simulate lock
+    time.sleep(3)
+    
+    conn.commit()
+    conn.close()
+    
+    return jsonify({'message': 'Database lock test completed'})
 
 
 @app.route('/sitemap.xml')

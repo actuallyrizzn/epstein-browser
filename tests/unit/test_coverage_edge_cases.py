@@ -13,6 +13,7 @@ os.environ['DATABASE_PATH'] = ':memory:'
 os.environ['DATA_DIR'] = 'tests/fixtures/test_data'
 
 from app import app, get_db_connection, init_database, rate_limiter, track_analytics, track_search_query, get_analytics_data, load_blog_posts
+from tests.test_database import test_db_manager
 
 
 class TestCoverageEdgeCases:
@@ -54,19 +55,8 @@ class TestCoverageEdgeCases:
     
     def test_analytics_data_with_mixed_results(self):
         """Test analytics data handling with mixed results."""
-        with patch('app.get_db_connection') as mock_conn:
-            mock_cursor = MagicMock()
-            mock_conn.return_value.cursor.return_value = mock_cursor
-            
-            # Mock database queries returning mixed results
-            mock_cursor.fetchone.return_value = (100, 50, 50, 0.5)
-            mock_cursor.fetchall.side_effect = [
-                [('page1', 10), ('page2', 5)],  # top_pages
-                [('0', 5), ('1', 8)],  # hourly_data
-                [('google.com', 20)],  # referrers
-                [('query1', 'all', 5, 2.5)]  # popular_searches
-            ]
-            
+        with test_db_manager as db_manager:
+            # Test with real database but empty data
             data = get_analytics_data()
             assert 'stats' in data
             assert 'top_pages' in data

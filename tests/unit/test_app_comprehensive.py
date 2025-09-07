@@ -8,11 +8,7 @@ import os
 from unittest.mock import patch, MagicMock
 from pathlib import Path
 
-# Set up test environment before importing app
-os.environ['FLASK_ENV'] = 'testing'
-os.environ['DATABASE_PATH'] = ':memory:'
-os.environ['DATA_DIR'] = 'tests/fixtures/test_data'
-
+from tests.test_database import test_db_manager
 from app import app, get_db_connection, init_database, rate_limiter, track_analytics, track_search_query, get_analytics_data
 
 
@@ -27,33 +23,35 @@ class TestAppComprehensive:
     
     def test_database_connection(self):
         """Test database connection functionality."""
-        conn = get_db_connection()
-        assert conn is not None
-        
-        # Test that we can execute queries
-        cursor = conn.cursor()
-        cursor.execute("SELECT 1")
-        result = cursor.fetchone()
-        assert result[0] == 1
-        
-        conn.close()
+        with test_db_manager as db_manager:
+            conn = get_db_connection()
+            assert conn is not None
+            
+            # Test that we can execute queries
+            cursor = conn.cursor()
+            cursor.execute("SELECT 1")
+            result = cursor.fetchone()
+            assert result[0] == 1
+            
+            conn.close()
     
     def test_analytics_table_initialization(self):
         """Test analytics table initialization."""
-        conn = get_db_connection()
-        cursor = conn.cursor()
-        
-        # Initialize analytics tables
-        init_database()
-        
-        # Check that tables exist
-        cursor.execute("SELECT name FROM sqlite_master WHERE type='table' AND name='analytics'")
-        assert cursor.fetchone() is not None
-        
-        cursor.execute("SELECT name FROM sqlite_master WHERE type='table' AND name='search_queries'")
-        assert cursor.fetchone() is not None
-        
-        conn.close()
+        with test_db_manager as db_manager:
+            conn = get_db_connection()
+            cursor = conn.cursor()
+            
+            # Initialize analytics tables
+            init_database()
+            
+            # Check that tables exist
+            cursor.execute("SELECT name FROM sqlite_master WHERE type='table' AND name='analytics'")
+            assert cursor.fetchone() is not None
+            
+            cursor.execute("SELECT name FROM sqlite_master WHERE type='table' AND name='search_queries'")
+            assert cursor.fetchone() is not None
+            
+            conn.close()
     
     def test_rate_limiter_initialization(self):
         """Test rate limiter initialization."""
@@ -67,25 +65,26 @@ class TestAppComprehensive:
     
     def test_track_analytics_function(self):
         """Test analytics tracking function."""
-        from flask import Flask
-        from werkzeug.test import EnvironBuilder
-        
-        test_app = Flask(__name__)
-        
-        # Create a mock request
-        builder = EnvironBuilder(method='GET', path='/test')
-        request = test_app.request_context(builder.get_environ())
-        
-        # Create a mock response
-        response = MagicMock()
-        response.status_code = 200
-        response.headers = {}
-        
-        # Test tracking (should not raise exception)
-        with request:
-            track_analytics(request, response, 0.5)
-        
-        assert True  # If we get here, no exception was raised
+        with test_db_manager as db_manager:
+            from flask import Flask
+            from werkzeug.test import EnvironBuilder
+            
+            test_app = Flask(__name__)
+            
+            # Create a mock request
+            builder = EnvironBuilder(method='GET', path='/test')
+            request = test_app.request_context(builder.get_environ())
+            
+            # Create a mock response
+            response = MagicMock()
+            response.status_code = 200
+            response.headers = {}
+            
+            # Test tracking (should not raise exception)
+            with request:
+                track_analytics(request, response, 0.5)
+            
+            assert True  # If we get here, no exception was raised
     
     def test_track_search_query_function(self):
         """Test search query tracking function."""

@@ -82,9 +82,23 @@ def test_db():
 @pytest.fixture(scope='function', autouse=True)
 def clean_rate_limiter():
     """Reset the rate limiter for each test."""
+    # Store original limits
+    original_limits = rate_limiter.limits.copy()
+    
+    # Reset to normal limits for testing
+    rate_limiter.limits = {
+        'search': (60, 60),    # 60 requests per 60 seconds
+        'image': (200, 60),    # 200 requests per 60 seconds  
+        'stats': (300, 60),    # 300 requests per 60 seconds
+        'default': (100, 60),  # 100 requests per 60 seconds
+    }
+    
     rate_limiter.requests.clear()
     yield
     rate_limiter.requests.clear()
+    
+    # Restore original limits
+    rate_limiter.limits = original_limits
 
 
 @pytest.fixture(scope='function')

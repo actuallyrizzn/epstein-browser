@@ -171,6 +171,29 @@
     background-color: #f8f9fa;
 }
 
+/* Image sizing for blog posts */
+.blog-post img {
+    max-width: 100%;
+    height: auto;
+    display: block;
+    margin: 1.5rem auto;
+    border-radius: 0.5rem;
+    box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+}
+
+.blog-post img:hover {
+    transform: scale(1.02);
+    transition: transform 0.2s ease;
+}
+
+/* Responsive image sizing */
+@media (max-width: 768px) {
+    .blog-post img {
+        margin: 1rem auto;
+        border-radius: 0.25rem;
+    }
+}
+
 .blog-meta .badge {
     font-size: 0.75rem;
 }
