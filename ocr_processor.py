@@ -78,8 +78,18 @@ class EasyOCRProcessor:
     def process_image(self, image_path: Path) -> str:
         """Process a single image and return OCR text"""
         try:
-            # Read text from image
-            results = self.reader.readtext(str(image_path))
+            # Load image with PIL to handle various formats including CCITT_T6
+            with Image.open(image_path) as img:
+                # Convert to RGB if necessary (handles grayscale, palette, etc.)
+                if img.mode != 'RGB':
+                    img = img.convert('RGB')
+                
+                # Convert PIL image to numpy array for EasyOCR
+                import numpy as np
+                img_array = np.array(img)
+                
+                # Read text from image array
+                results = self.reader.readtext(img_array)
             
             # Extract text from results
             text_parts = []
