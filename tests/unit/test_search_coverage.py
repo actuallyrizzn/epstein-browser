@@ -12,7 +12,7 @@ os.environ['FLASK_ENV'] = 'testing'
 os.environ['DATABASE_PATH'] = ':memory:'
 os.environ['DATA_DIR'] = 'tests/fixtures/test_data'
 
-from app import app, get_db_connection, init_analytics_table, get_ocr_text, get_image_by_path, get_total_images
+from app import app, get_db_connection, init_database, get_ocr_text, get_image_by_path, get_total_images
 
 
 class TestSearchCoverage:

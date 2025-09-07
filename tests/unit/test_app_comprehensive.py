@@ -13,7 +13,7 @@ os.environ['FLASK_ENV'] = 'testing'
 os.environ['DATABASE_PATH'] = ':memory:'
 os.environ['DATA_DIR'] = 'tests/fixtures/test_data'
 
-from app import app, get_db_connection, init_analytics_table, rate_limiter, track_analytics, track_search_query, get_analytics_data
+from app import app, get_db_connection, init_database, rate_limiter, track_analytics, track_search_query, get_analytics_data
 
 
 class TestAppComprehensive:
@@ -44,7 +44,7 @@ class TestAppComprehensive:
         cursor = conn.cursor()
         
         # Initialize analytics tables
-        init_analytics_table()
+        init_database()
         
         # Check that tables exist
         cursor.execute("SELECT name FROM sqlite_master WHERE type='table' AND name='analytics'")

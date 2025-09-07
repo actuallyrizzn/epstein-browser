@@ -12,7 +12,7 @@ os.environ['FLASK_ENV'] = 'testing'
 os.environ['DATABASE_PATH'] = ':memory:'
 os.environ['DATA_DIR'] = 'tests/fixtures/test_data'
 
-from app import app, get_db_connection, init_analytics_table
+from app import app, get_db_connection, init_database
 from tests.test_database import test_db_manager
 
 
@@ -311,20 +311,26 @@ class TestRouteCoverage:
     def test_view_image_route_success(self):
         """Test view image route success."""
         with test_db_manager as db_manager:
-            # Insert test data
+            # Clear any existing data and insert test data
             conn = get_db_connection()
             cursor = conn.cursor()
+            cursor.execute('DELETE FROM images')  # Clear existing data
+            conn.commit()
             
             cursor.execute("""
-                INSERT INTO images (id, file_path, file_name, file_size, file_type, directory_path, volume, subdirectory, file_hash, has_ocr_text, ocr_text_path)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-            """, (1, 'test1.TIF', 'test1.TIF', 1024, 'TIF', 'test', 'VOL00001', 'IMAGES001', 'hash1', True, 'ocr1.txt'))
+                INSERT INTO images (file_path, file_name, file_size, file_type, directory_path, volume, subdirectory, file_hash, has_ocr_text, ocr_text_path)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            """, ('test1.TIF', 'test1.TIF', 1024, 'TIF', 'test', 'VOL00001', 'IMAGES001', 'hash1', True, 'ocr1.txt'))
             
             conn.commit()
+            
+            # Get the actual ID that was inserted
+            cursor.execute('SELECT id FROM images WHERE file_path = ?', ('test1.TIF',))
+            image_id = cursor.fetchone()[0]
             conn.close()
             
             with app.test_client() as client:
-                response = client.get('/view/1')
+                response = client.get(f'/view/{image_id}')
                 assert response.status_code == 200
                 assert b'Document Viewer' in response.data or b'viewer' in response.data.lower()
     

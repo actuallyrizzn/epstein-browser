@@ -17,7 +17,7 @@ os.environ['FLASK_ENV'] = 'testing'
 from tests.test_database import test_db_manager
 
 # Import after setting environment variables
-from app import app, get_db_connection, init_analytics_table, rate_limiter
+from app import app, get_db_connection, init_database, rate_limiter
 
 
 @pytest.fixture(scope='session')

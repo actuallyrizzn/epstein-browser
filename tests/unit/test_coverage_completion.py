@@ -12,7 +12,7 @@ os.environ['FLASK_ENV'] = 'testing'
 os.environ['DATABASE_PATH'] = ':memory:'
 os.environ['DATA_DIR'] = 'tests/fixtures/test_data'
 
-from app import app, get_db_connection, init_analytics_table, rate_limiter, track_analytics, track_search_query, get_analytics_data, load_blog_posts
+from app import app, get_db_connection, init_database, rate_limiter, track_analytics, track_search_query, get_analytics_data, load_blog_posts
 
 
 class TestCoverageCompletion:
@@ -39,7 +39,7 @@ class TestCoverageCompletion:
             mock_cursor.execute.side_effect = Exception("Table creation failed")
             
             with pytest.raises(Exception):
-                init_analytics_table()
+                init_database()
     
     def test_analytics_tracking_error_handling(self):
         """Test lines 396-398: Analytics tracking error handling."""
@@ -290,7 +290,7 @@ class TestCoverageCompletion:
         cursor = conn.cursor()
         
         # Initialize analytics tables
-        init_analytics_table()
+        init_database()
         
         # Insert some test data
         cursor.execute("""

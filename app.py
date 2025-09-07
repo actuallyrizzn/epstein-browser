@@ -39,7 +39,11 @@ from collections import defaultdict, deque
 load_dotenv()
 
 # Configuration from environment variables
-DATA_DIR = Path(os.environ.get('DATA_DIR', 'data'))
+def get_data_dir():
+    """Get DATA_DIR from environment variable."""
+    return Path(os.environ.get('DATA_DIR', 'data'))
+
+DATA_DIR = get_data_dir()  # For backward compatibility
 DB_PATH = os.environ.get('DATABASE_PATH', 'images.db')
 
 # Environment detection
@@ -154,21 +158,64 @@ def before_request():
 def after_request(response):
     if hasattr(request, 'start_time'):
         response_time = time.time() - request.start_time
-        track_analytics(request, response, response_time)
+        try:
+            track_analytics(request, response, response_time)
+        except Exception as e:
+            # Log analytics errors but don't fail the request
+            app.logger.error(f"Analytics tracking failed: {e}")
     return response
 
 
-def get_db_connection():
-    """Get database connection"""
+def _get_raw_db_connection():
+    """Get a raw database connection without initialization."""
     conn = sqlite3.connect(DB_PATH)
     conn.row_factory = sqlite3.Row
     return conn
 
 
-def init_analytics_table():
-    """Initialize analytics table if it doesn't exist"""
-    conn = get_db_connection()
+def get_db_connection():
+    """Get database connection with initialization."""
+    # Ensure database is initialized
+    init_database()
+    return _get_raw_db_connection()
+
+
+def init_database():
+    """Initialize all database tables if they don't exist"""
+    conn = _get_raw_db_connection()
     cursor = conn.cursor()
+    
+    # Create images table
+    cursor.execute("""
+        CREATE TABLE IF NOT EXISTS images (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            file_path TEXT UNIQUE NOT NULL,
+            file_name TEXT NOT NULL,
+            file_size INTEGER NOT NULL,
+            file_type TEXT NOT NULL,
+            directory_path TEXT NOT NULL,
+            volume TEXT,
+            subdirectory TEXT,
+            file_hash TEXT,
+            has_ocr_text BOOLEAN DEFAULT FALSE,
+            ocr_text_path TEXT,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        )
+    """)
+    
+    # Create directories table
+    cursor.execute("""
+        CREATE TABLE IF NOT EXISTS directories (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            path TEXT UNIQUE NOT NULL,
+            name TEXT NOT NULL,
+            parent_path TEXT,
+            level INTEGER NOT NULL,
+            file_count INTEGER DEFAULT 0,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        )
+    """)
     
     # Create analytics table
     cursor.execute("""
@@ -201,6 +248,10 @@ def init_analytics_table():
     """)
     
     # Create indexes for better performance
+    cursor.execute("CREATE INDEX IF NOT EXISTS idx_images_file_path ON images(file_path)")
+    cursor.execute("CREATE INDEX IF NOT EXISTS idx_images_file_type ON images(file_type)")
+    cursor.execute("CREATE INDEX IF NOT EXISTS idx_images_has_ocr_text ON images(has_ocr_text)")
+    cursor.execute("CREATE INDEX IF NOT EXISTS idx_directories_path ON directories(path)")
     cursor.execute("CREATE INDEX IF NOT EXISTS idx_analytics_timestamp ON analytics(timestamp)")
     cursor.execute("CREATE INDEX IF NOT EXISTS idx_analytics_path ON analytics(path)")
     cursor.execute("CREATE INDEX IF NOT EXISTS idx_analytics_ip ON analytics(ip_address)")
@@ -211,8 +262,9 @@ def init_analytics_table():
     conn.commit()
     conn.close()
 
-# Initialize analytics table
-init_analytics_table()
+# Initialize database tables only in production
+if IS_PRODUCTION:
+    init_database()
 
 
 def track_analytics(request, response, response_time):
@@ -388,7 +440,7 @@ def get_ocr_text(file_path):
     file_path = file_path.replace('\\', '/')
     
     # Create the OCR text file path by replacing the extension with .txt
-    ocr_file = DATA_DIR / file_path
+    ocr_file = get_data_dir() / file_path
     ocr_file = ocr_file.with_suffix('.txt')
     
     if ocr_file.exists():
@@ -479,8 +531,8 @@ def serve_image(file_path):
     """Serve image files"""
     # Convert URL-encoded backslashes back to forward slashes for cross-platform compatibility
     file_path = file_path.replace('%5C', '/').replace('\\', '/')
-    full_path = DATA_DIR / file_path
-    if not str(full_path).startswith(str(DATA_DIR)):
+    full_path = get_data_dir() / file_path
+    if not str(full_path).startswith(str(get_data_dir())):
         abort(403)
     
     if not full_path.exists():
@@ -532,7 +584,7 @@ def serve_thumbnail(image_id):
         
         # Construct full path
         file_path = image[0].replace('%5C', '/').replace('\\', '/')
-        full_path = DATA_DIR / file_path
+        full_path = get_data_dir() / file_path
         
         # Check if file exists
         if not full_path.exists():
@@ -609,9 +661,8 @@ def api_search():
     if not query:
         return jsonify({'results': []})
     
-    conn = get_db_connection()
-    
     try:
+        conn = get_db_connection()
         # Build base query with filters
         where_conditions = []
         params = []
@@ -638,7 +689,7 @@ def api_search():
         
         # Calculate pagination
         page = int(request.args.get('page', 1))
-        per_page = 50
+        per_page = int(request.args.get('per_page', 50))
         offset = (page - 1) * per_page
         
         # Create params for main query
@@ -686,7 +737,7 @@ def api_search():
             for row in ocr_candidates:
                 try:
                     # Read the OCR text file
-                    ocr_file_path = DATA_DIR / row['file_path'].replace(row['file_path'].split('.')[-1], 'txt')
+                    ocr_file_path = get_data_dir() / row['file_path'].replace(row['file_path'].split('.')[-1], 'txt')
                     if ocr_file_path.exists():
                         ocr_text = ocr_file_path.read_text(encoding='utf-8', errors='ignore')
                         query_lower = query.lower()
@@ -721,11 +772,11 @@ def api_search():
         
         # Combine results based on search type
         if search_type == 'filename':
-            all_results = list(filename_results)
+            all_results = [dict(row) for row in filename_results]
         elif search_type == 'ocr':
             all_results = ocr_text_results
         else:  # all
-            all_results = list(filename_results) + ocr_text_results
+            all_results = [dict(row) for row in filename_results] + ocr_text_results
         
         # Sort combined results if needed
         if sort_by == 'relevance' and search_type == 'all':
@@ -765,7 +816,8 @@ def api_search():
         return jsonify(response_data)
         
     except Exception as e:
-        conn.close()
+        if 'conn' in locals():
+            conn.close()
         return jsonify({'error': str(e), 'results': []})
 
 
@@ -860,10 +912,10 @@ def help_context():
 @app.route('/data/screenshots/<filename>')
 def serve_screenshot(filename):
     """Serve screenshot files from data/screenshots directory"""
-    screenshot_path = DATA_DIR / 'screenshots' / filename
+    screenshot_path = get_data_dir() / 'screenshots' / filename
     
     # Security check - ensure the file is in the screenshots directory
-    if not screenshot_path.exists() or not str(screenshot_path).startswith(str(DATA_DIR / 'screenshots')):
+    if not screenshot_path.exists() or not str(screenshot_path).startswith(str(get_data_dir() / 'screenshots')):
         abort(404)
     
     return send_file(screenshot_path)
