@@ -25,6 +25,16 @@ def test_app():
     """Create a test Flask application."""
     app.config['TESTING'] = True
     app.config['WTF_CSRF_ENABLED'] = False
+    
+    # Disable rate limiting in tests
+    with app.app_context():
+        rate_limiter.limits = {
+            'search': (10000, 60),    # Very high limits for testing
+            'image': (10000, 60),    
+            'stats': (10000, 60),    
+            'default': (10000, 60),  
+        }
+    
     return app
 
 
@@ -69,7 +79,7 @@ def test_db():
     return test_data_dir
 
 
-@pytest.fixture(scope='function')
+@pytest.fixture(scope='function', autouse=True)
 def clean_rate_limiter():
     """Reset the rate limiter for each test."""
     rate_limiter.requests.clear()

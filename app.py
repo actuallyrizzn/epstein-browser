@@ -292,6 +292,7 @@ def get_analytics_data(days=7):
     """.format(days))
     
     stats = cursor.fetchone()
+    stats_columns = [col[0] for col in cursor.description] if cursor.description else []
     
     # Get top pages
     cursor.execute("""
@@ -345,7 +346,7 @@ def get_analytics_data(days=7):
     conn.close()
     
     return {
-        'stats': dict(stats),
+        'stats': dict(zip(stats_columns, stats)) if stats else {},
         'top_pages': [dict(row) for row in top_pages],
         'hourly_data': [dict(row) for row in hourly_data],
         'referrers': [dict(row) for row in referrers],

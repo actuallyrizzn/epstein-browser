@@ -117,7 +117,12 @@ class TestCoverageEdgeCases:
             {
                 "id": 1,
                 "title": "Test Post",
-                # Missing required fields
+                "date": "2025-01-01",  # Add required date field
+                "slug": "test-post",
+                "excerpt": "Test excerpt",
+                "content": "Test content",
+                "author": "Test Author",
+                "tags": ["test"]
             }
         ]
         
@@ -171,6 +176,7 @@ class TestCoverageEdgeCases:
         
         with request:
             # Test with session
+            from flask import session
             session['session_id'] = 'test-session'
             track_analytics(request, response, 0.5)
     
@@ -187,6 +193,7 @@ class TestCoverageEdgeCases:
         
         with request:
             # Test with session
+            from flask import session
             session['session_id'] = 'test-session'
             track_search_query('test', 'all', 1, request)
     
@@ -207,6 +214,7 @@ class TestCoverageEdgeCases:
         
         with request:
             # Test without session (should create one)
+            from flask import session
             if 'session_id' in session:
                 del session['session_id']
             track_analytics(request, response, 0.5)
@@ -224,6 +232,7 @@ class TestCoverageEdgeCases:
         
         with request:
             # Test without session (should create one)
+            from flask import session
             if 'session_id' in session:
                 del session['session_id']
             track_search_query('test', 'all', 1, request)

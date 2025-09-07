@@ -27,7 +27,7 @@
     </url>
     
     <!-- Document Pages (first 100 for sitemap) -->
-    {% for i in range(1, min(101, total_images + 1)) %}
+    {% for i in range(1, [101, total_images + 1]|min) %}
     <url>
         <loc>{{ url_for('view_image', image_id=i, _external=True) }}</loc>
         <lastmod>{{ moment().strftime('%Y-%m-%d') }}</lastmod>

@@ -205,8 +205,9 @@ class TestRouteCoverage:
             with client.session_transaction() as sess:
                 sess['admin_logged_in'] = False
             
-            response = require_admin_auth()
-            assert response.status_code == 302  # Redirect to login
+            with app.test_request_context():
+                response = require_admin_auth()
+                assert response.status_code == 302  # Redirect to login
     
     def test_check_admin_auth_function(self):
         """Test check_admin_auth function."""
@@ -217,14 +218,18 @@ class TestRouteCoverage:
             with client.session_transaction() as sess:
                 sess['admin_logged_in'] = False
             
-            assert check_admin_auth() == False
+            with app.test_request_context() as ctx:
+                ctx.session['admin_logged_in'] = False
+                assert check_admin_auth() == False
         
         # Test when authenticated
         with app.test_client() as client:
             with client.session_transaction() as sess:
                 sess['admin_logged_in'] = True
             
-            assert check_admin_auth() == True
+            with app.test_request_context() as ctx:
+                ctx.session['admin_logged_in'] = True
+                assert check_admin_auth() == True
     
     def test_sitemap_route(self):
         """Test sitemap route."""
