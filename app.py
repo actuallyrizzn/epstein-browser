@@ -647,6 +647,18 @@ def help_page():
     return render_template('help.html')
 
 
+@app.route('/data/screenshots/<filename>')
+def serve_screenshot(filename):
+    """Serve screenshot files from data/screenshots directory"""
+    screenshot_path = DATA_DIR / 'screenshots' / filename
+    
+    # Security check - ensure the file is in the screenshots directory
+    if not screenshot_path.exists() or not str(screenshot_path).startswith(str(DATA_DIR / 'screenshots')):
+        abort(404)
+    
+    return send_file(screenshot_path)
+
+
 @app.route('/blog')
 def blog():
     """Blog listing page"""
