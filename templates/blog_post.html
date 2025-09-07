@@ -1,0 +1,204 @@
+{% extends "base.html" %}
+
+{% block title %}{{ post.title }} - {{ super() }}{% endblock %}
+
+{% block description %}{{ post.excerpt }}{% endblock %}
+
+{% block og_title %}{{ post.title }} - {{ super() }}{% endblock %}
+{% block og_description %}{{ post.excerpt }}{% endblock %}
+
+{% block twitter_title %}{{ post.title }} - {{ super() }}{% endblock %}
+{% block twitter_description %}{{ post.excerpt }}{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <div class="row">
+        <div class="col-lg-8 mx-auto">
+            <!-- Back to blog link -->
+            <div class="mb-4">
+                <a href="{{ url_for('blog') }}" class="btn btn-outline-secondary btn-sm">
+                    <i class="fas fa-arrow-left me-1"></i> Back to Blog
+                </a>
+            </div>
+
+            <!-- Blog post content -->
+            <article class="blog-post">
+                <header class="mb-5">
+                    <h1 class="display-4 mb-3">{{ post.title }}</h1>
+                    
+                    <div class="blog-meta mb-4">
+                        <div class="d-flex flex-wrap align-items-center text-muted">
+                            <span class="me-3">
+                                <i class="fas fa-calendar me-1"></i>
+                                {{ post.date }}
+                            </span>
+                            <span class="me-3">
+                                <i class="fas fa-user me-1"></i>
+                                {{ post.author }}
+                            </span>
+                            <div class="tags">
+                                {% for tag in post.tags %}
+                                <span class="badge bg-secondary me-1">{{ tag }}</span>
+                                {% endfor %}
+                            </div>
+                        </div>
+                    </div>
+                </header>
+
+                <div class="blog-content">
+                    {{ post.html_content | safe }}
+                </div>
+
+                <footer class="mt-5 pt-4 border-top">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <div>
+                            <small class="text-muted">
+                                Published on {{ post.date }} by {{ post.author }}
+                            </small>
+                        </div>
+                        <div>
+                            <a href="{{ url_for('blog') }}" class="btn btn-outline-primary btn-sm">
+                                <i class="fas fa-arrow-left me-1"></i> Back to Blog
+                            </a>
+                        </div>
+                    </div>
+                </footer>
+            </article>
+        </div>
+    </div>
+</div>
+
+<style>
+.blog-post {
+    line-height: 1.7;
+}
+
+.blog-post h1, .blog-post h2, .blog-post h3, .blog-post h4, .blog-post h5, .blog-post h6 {
+    margin-top: 2rem;
+    margin-bottom: 1rem;
+    font-weight: 600;
+}
+
+.blog-post h2 {
+    font-size: 1.75rem;
+    border-bottom: 2px solid #e9ecef;
+    padding-bottom: 0.5rem;
+}
+
+.blog-post h3 {
+    font-size: 1.5rem;
+    color: #495057;
+}
+
+.blog-post p {
+    margin-bottom: 1.5rem;
+    text-align: justify;
+}
+
+.blog-post ul, .blog-post ol {
+    margin-bottom: 1.5rem;
+    padding-left: 2rem;
+}
+
+.blog-post li {
+    margin-bottom: 0.5rem;
+}
+
+.blog-post code {
+    background-color: #f8f9fa;
+    padding: 0.2rem 0.4rem;
+    border-radius: 0.25rem;
+    font-size: 0.9em;
+    color: #e83e8c;
+    font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace;
+}
+
+.blog-post pre {
+    background-color: #f8f9fa;
+    padding: 1rem;
+    border-radius: 0.5rem;
+    border: 1px solid #e9ecef;
+    overflow-x: auto;
+    margin-bottom: 1.5rem;
+}
+
+.blog-post pre code {
+    background-color: transparent;
+    padding: 0;
+    color: #333;
+    font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace;
+}
+
+.blog-post blockquote {
+    border-left: 4px solid #007bff;
+    padding-left: 1rem;
+    margin: 1.5rem 0;
+    font-style: italic;
+    color: #6c757d;
+    background-color: #f8f9fa;
+    padding: 1rem;
+    border-radius: 0.25rem;
+}
+
+.blog-post a {
+    color: #007bff;
+    text-decoration: none;
+}
+
+.blog-post a:hover {
+    text-decoration: underline;
+}
+
+.blog-post table {
+    width: 100%;
+    margin-bottom: 1.5rem;
+    border-collapse: collapse;
+}
+
+.blog-post table th,
+.blog-post table td {
+    padding: 0.75rem;
+    text-align: left;
+    border-bottom: 1px solid #dee2e6;
+}
+
+.blog-post table th {
+    background-color: #f8f9fa;
+    font-weight: 600;
+}
+
+.blog-post table tr:hover {
+    background-color: #f8f9fa;
+}
+
+.blog-meta .badge {
+    font-size: 0.75rem;
+}
+
+.tags .badge {
+    margin-right: 0.25rem;
+}
+
+/* Code highlighting */
+.highlight {
+    background-color: #f8f9fa;
+    border-radius: 0.5rem;
+    padding: 1rem;
+    margin-bottom: 1.5rem;
+    overflow-x: auto;
+}
+
+.highlight pre {
+    background-color: transparent;
+    padding: 0;
+    margin: 0;
+    border: none;
+}
+
+.highlight code {
+    background-color: transparent;
+    padding: 0;
+    color: #333;
+}
+</style>
+{% endblock %}

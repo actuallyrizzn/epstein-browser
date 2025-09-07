@@ -48,3 +48,9 @@ Thumbs.db
 tmp/
 temp/
 ssh-config
+
+# Environment variables
+.env
+.env.local
+.env.production
+.env.staging

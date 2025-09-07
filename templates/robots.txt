@@ -1,0 +1,20 @@
+User-agent: *
+Allow: /
+
+# Sitemap
+Sitemap: {{ url_for('sitemap', _external=True) }}
+
+# Crawl-delay for respectful crawling
+Crawl-delay: 1
+
+# Disallow specific paths that shouldn't be indexed
+Disallow: /api/
+Disallow: /image/
+Disallow: /tmp/
+Disallow: /venv/
+Disallow: /data/
+
+# Allow important pages
+Allow: /
+Allow: /help
+Allow: /view/

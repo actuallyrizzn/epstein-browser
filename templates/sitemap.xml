@@ -1,0 +1,43 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9"
+        xmlns:image="http://www.google.com/schemas/sitemap-image/1.1">
+    
+    <!-- Homepage -->
+    <url>
+        <loc>{{ url_for('index', _external=True) }}</loc>
+        <lastmod>{{ moment().strftime('%Y-%m-%d') }}</lastmod>
+        <changefreq>daily</changefreq>
+        <priority>1.0</priority>
+    </url>
+    
+    <!-- Help Page -->
+    <url>
+        <loc>{{ url_for('help_page', _external=True) }}</loc>
+        <lastmod>{{ moment().strftime('%Y-%m-%d') }}</lastmod>
+        <changefreq>weekly</changefreq>
+        <priority>0.8</priority>
+    </url>
+    
+    <!-- API Stats -->
+    <url>
+        <loc>{{ url_for('api_stats', _external=True) }}</loc>
+        <lastmod>{{ moment().strftime('%Y-%m-%d') }}</lastmod>
+        <changefreq>daily</changefreq>
+        <priority>0.6</priority>
+    </url>
+    
+    <!-- Document Pages (first 100 for sitemap) -->
+    {% for i in range(1, min(101, total_images + 1)) %}
+    <url>
+        <loc>{{ url_for('view_image', image_id=i, _external=True) }}</loc>
+        <lastmod>{{ moment().strftime('%Y-%m-%d') }}</lastmod>
+        <changefreq>monthly</changefreq>
+        <priority>0.7</priority>
+        <image:image>
+            <image:loc>{{ url_for('serve_image', file_path=image_paths[i-1], _external=True) }}</image:loc>
+            <image:title>Document {{ i }} - {{ image_names[i-1] }}</image:title>
+        </image:image>
+    </url>
+    {% endfor %}
+    
+</urlset>

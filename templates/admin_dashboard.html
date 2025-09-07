@@ -1,0 +1,209 @@
+{% extends "base.html" %}
+
+{% block title %}Admin Dashboard - {{ super() }}{% endblock %}
+
+{% block content %}
+<div class="container-fluid mt-4">
+    <div class="row">
+        <div class="col-12">
+            <div class="d-flex justify-content-between align-items-center mb-4">
+                <h1 class="h2">
+                    <i class="fas fa-chart-line me-2"></i>Admin Dashboard
+                </h1>
+                <div>
+                    <a href="{{ url_for('admin_logout') }}" class="btn btn-outline-danger">
+                        <i class="fas fa-sign-out-alt me-1"></i>Logout
+                    </a>
+                </div>
+            </div>
+
+            <!-- Time Period Selector -->
+            <div class="card mb-4">
+                <div class="card-body">
+                    <h5 class="card-title">Time Period</h5>
+                    <div class="btn-group" role="group">
+                        <a href="{{ url_for('admin_dashboard', days=1) }}" 
+                           class="btn btn-outline-primary {{ 'active' if days == 1 else '' }}">Last 24 Hours</a>
+                        <a href="{{ url_for('admin_dashboard', days=7) }}" 
+                           class="btn btn-outline-primary {{ 'active' if days == 7 else '' }}">Last 7 Days</a>
+                        <a href="{{ url_for('admin_dashboard', days=30) }}" 
+                           class="btn btn-outline-primary {{ 'active' if days == 30 else '' }}">Last 30 Days</a>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Stats Overview -->
+            <div class="row mb-4">
+                <div class="col-md-3">
+                    <div class="card text-center">
+                        <div class="card-body">
+                            <i class="fas fa-eye fa-2x text-primary mb-2"></i>
+                            <h3 class="card-title">{{ analytics.stats.total_requests or 0 }}</h3>
+                            <p class="card-text text-muted">Total Requests</p>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-3">
+                    <div class="card text-center">
+                        <div class="card-body">
+                            <i class="fas fa-users fa-2x text-success mb-2"></i>
+                            <h3 class="card-title">{{ analytics.stats.unique_visitors or 0 }}</h3>
+                            <p class="card-text text-muted">Unique Visitors</p>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-3">
+                    <div class="card text-center">
+                        <div class="card-body">
+                            <i class="fas fa-window-restore fa-2x text-info mb-2"></i>
+                            <h3 class="card-title">{{ analytics.stats.unique_sessions or 0 }}</h3>
+                            <p class="card-text text-muted">Unique Sessions</p>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-3">
+                    <div class="card text-center">
+                        <div class="card-body">
+                            <i class="fas fa-tachometer-alt fa-2x text-warning mb-2"></i>
+                            <h3 class="card-title">{{ "%.2f"|format(analytics.stats.avg_response_time or 0) }}s</h3>
+                            <p class="card-text text-muted">Avg Response Time</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="row">
+                <!-- Top Pages -->
+                <div class="col-md-6 mb-4">
+                    <div class="card">
+                        <div class="card-header">
+                            <h5 class="card-title mb-0">
+                                <i class="fas fa-file-alt me-2"></i>Top Pages
+                            </h5>
+                        </div>
+                        <div class="card-body">
+                            {% if analytics.top_pages %}
+                                <div class="table-responsive">
+                                    <table class="table table-sm">
+                                        <thead>
+                                            <tr>
+                                                <th>Page</th>
+                                                <th>Views</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            {% for page in analytics.top_pages %}
+                                            <tr>
+                                                <td>
+                                                    <code>{{ page.path }}</code>
+                                                </td>
+                                                <td>
+                                                    <span class="badge bg-primary">{{ page.views }}</span>
+                                                </td>
+                                            </tr>
+                                            {% endfor %}
+                                        </tbody>
+                                    </table>
+                                </div>
+                            {% else %}
+                                <p class="text-muted">No data available</p>
+                            {% endif %}
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Referrers -->
+                <div class="col-md-6 mb-4">
+                    <div class="card">
+                        <div class="card-header">
+                            <h5 class="card-title mb-0">
+                                <i class="fas fa-external-link-alt me-2"></i>Top Referrers
+                            </h5>
+                        </div>
+                        <div class="card-body">
+                            {% if analytics.referrers %}
+                                <div class="table-responsive">
+                                    <table class="table table-sm">
+                                        <thead>
+                                            <tr>
+                                                <th>Referrer</th>
+                                                <th>Visits</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            {% for referrer in analytics.referrers %}
+                                            <tr>
+                                                <td>
+                                                    <a href="{{ referrer.referer }}" target="_blank" class="text-decoration-none">
+                                                        {{ referrer.referer[:50] }}{% if referrer.referer|length > 50 %}...{% endif %}
+                                                    </a>
+                                                </td>
+                                                <td>
+                                                    <span class="badge bg-success">{{ referrer.visits }}</span>
+                                                </td>
+                                            </tr>
+                                            {% endfor %}
+                                        </tbody>
+                                    </table>
+                                </div>
+                            {% else %}
+                                <p class="text-muted">No referrer data available</p>
+                            {% endif %}
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Hourly Distribution -->
+            <div class="row">
+                <div class="col-12">
+                    <div class="card">
+                        <div class="card-header">
+                            <h5 class="card-title mb-0">
+                                <i class="fas fa-clock me-2"></i>Hourly Distribution
+                            </h5>
+                        </div>
+                        <div class="card-body">
+                            {% if analytics.hourly_data %}
+                                <canvas id="hourlyChart" width="400" height="100"></canvas>
+                            {% else %}
+                                <p class="text-muted">No hourly data available</p>
+                            {% endif %}
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+{% if analytics.hourly_data %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script>
+const ctx = document.getElementById('hourlyChart').getContext('2d');
+const hourlyData = {{ analytics.hourly_data | tojson }};
+
+const chart = new Chart(ctx, {
+    type: 'line',
+    data: {
+        labels: hourlyData.map(item => item.hour + ':00'),
+        datasets: [{
+            label: 'Requests',
+            data: hourlyData.map(item => item.requests),
+            borderColor: 'rgb(75, 192, 192)',
+            backgroundColor: 'rgba(75, 192, 192, 0.2)',
+            tension: 0.1
+        }]
+    },
+    options: {
+        responsive: true,
+        scales: {
+            y: {
+                beginAtZero: true
+            }
+        }
+    }
+});
+</script>
+{% endif %}
+{% endblock %}

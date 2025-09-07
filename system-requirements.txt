@@ -1,0 +1,22 @@
+# System Requirements for Epstein Documents OCR Processor
+# These packages must be installed at the system level (not via pip)
+
+# OCR Engine
+tesseract-ocr
+
+# Optional: Additional language packs for better OCR accuracy
+# tesseract-ocr-eng  # English (usually included by default)
+# tesseract-ocr-spa  # Spanish
+# tesseract-ocr-fra  # French
+# tesseract-ocr-deu  # German
+
+# Image processing libraries (usually already installed)
+# libjpeg-dev
+# libpng-dev
+# libtiff-dev
+
+# Installation commands for different systems:
+# Ubuntu/Debian: sudo apt-get install tesseract-ocr
+# CentOS/RHEL: sudo yum install tesseract
+# macOS: brew install tesseract
+# Windows: Download from https://github.com/UB-Mannheim/tesseract/wiki

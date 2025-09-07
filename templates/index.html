@@ -2,6 +2,16 @@
 
 {% block title %}Home - Epstein Documents Browser{% endblock %}
 
+{% block description %}Browse and search through {{ "{:,}".format(total_images) }} congressional document images with advanced OCR capabilities. Open source document management system by Mark Rizzn Hopkins.{% endblock %}
+
+{% block og_title %}Epstein Documents Browser - {{ "{:,}".format(total_images) }} Congressional Records{% endblock %}
+
+{% block og_description %}Browse and search through {{ "{:,}".format(total_images) }} congressional document images with advanced OCR capabilities. Open source document management system.{% endblock %}
+
+{% block twitter_title %}Epstein Documents Browser - {{ "{:,}".format(total_images) }} Congressional Records{% endblock %}
+
+{% block twitter_description %}Browse and search through {{ "{:,}".format(total_images) }} congressional document images with advanced OCR capabilities. Open source document management system.{% endblock %}
+
 {% block content %}
 <div class="row">
     <div class="col-12">
@@ -25,7 +35,7 @@
                 <p class="card-text mb-3">
                     Browse through {{ "{:,}".format(total_images) }} congressional documents with Archive.org-style navigation
                 </p>
-                <a href="{{ url_for('view_image', image_id=1) }}" class="btn btn-light btn-lg">
+                <a href="{{ url_for('view_image', image_id=first_image.id) }}" class="btn btn-light btn-lg">
                     <i class="fas fa-book-open me-2"></i>
                     Start Reading
                 </a>
@@ -64,17 +74,17 @@
                 <h5><i class="fas fa-compass me-2"></i>Quick Navigation</h5>
                 <div class="row">
                     <div class="col-md-3 mb-2">
-                        <a href="{{ url_for('view_image', image_id=1) }}" class="btn btn-outline-primary w-100">
+                        <a href="{{ url_for('view_image', image_id=first_image.id) }}" class="btn btn-outline-primary w-100">
                             <i class="fas fa-angle-double-left me-2"></i>First Document
                         </a>
                     </div>
                     <div class="col-md-3 mb-2">
-                        <a href="{{ url_for('view_image', image_id=total_images//2) }}" class="btn btn-outline-primary w-100">
+                        <a href="{{ url_for('view_image', image_id=first_image.id + total_images//2) }}" class="btn btn-outline-primary w-100">
                             <i class="fas fa-equals me-2"></i>Middle
                         </a>
                     </div>
                     <div class="col-md-3 mb-2">
-                        <a href="{{ url_for('view_image', image_id=total_images) }}" class="btn btn-outline-primary w-100">
+                        <a href="{{ url_for('view_image', image_id=first_image.id + total_images - 1) }}" class="btn btn-outline-primary w-100">
                             <i class="fas fa-angle-double-right me-2"></i>Last Document
                         </a>
                     </div>
@@ -96,7 +106,7 @@
             <div class="card-body">
                 <h5><i class="fas fa-search me-2"></i>Search Documents</h5>
                 <div class="input-group">
-                    <input type="text" class="form-control" id="search-input" placeholder="Search by filename...">
+                    <input type="text" class="form-control" id="search-input" placeholder="Search by filename or document content...">
                     <button class="btn btn-primary" onclick="searchDocuments()">
                         <i class="fas fa-search me-1"></i>Search
                     </button>
@@ -155,7 +165,9 @@
     // Random document function
     function randomDocument() {
         const totalImages = {{ total_images }};
-        const randomId = Math.floor(Math.random() * totalImages) + 1;
+        const firstId = {{ first_image.id }};
+        const lastId = firstId + totalImages - 1;
+        const randomId = Math.floor(Math.random() * totalImages) + firstId;
         window.location.href = `/view/${randomId}`;
     }
 
@@ -175,13 +187,30 @@
 
                 let html = '<div class="list-group">';
                 data.results.forEach(result => {
+                    const matchType = result.match_type || 'filename';
+                    const matchBadge = matchType === 'filename' ? 
+                        '<span class="badge bg-primary me-2">Filename</span>' : 
+                        '<span class="badge bg-success me-2">Content</span>';
+                    
+                    // Add excerpt for OCR matches
+                    let excerptHtml = '';
+                    if (result.excerpt) {
+                        // Highlight the search term in the excerpt
+                        const highlightedExcerpt = result.excerpt.replace(
+                            new RegExp(`(${query})`, 'gi'), 
+                            '<mark>$1</mark>'
+                        );
+                        excerptHtml = `<div class="mt-2"><small class="text-muted">${highlightedExcerpt}</small></div>`;
+                    }
+                    
                     html += `
                         <a href="/view/${result.id}" class="list-group-item list-group-item-action">
                             <div class="d-flex w-100 justify-content-between">
-                                <h6 class="mb-1">${result.file_name}</h6>
+                                <h6 class="mb-1">${result.file_name} ${matchBadge}</h6>
                                 <small>${result.has_ocr_text ? '<i class="fas fa-file-text text-success"></i>' : '<i class="fas fa-clock text-muted"></i>'}</small>
                             </div>
                             <p class="mb-1 text-muted">${result.directory_path}</p>
+                            ${excerptHtml}
                         </a>
                     `;
                 });

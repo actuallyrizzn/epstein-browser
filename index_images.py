@@ -102,23 +102,42 @@ def calculate_file_hash(file_path: Path) -> str:
 
 
 def index_images():
-    """Index all image files"""
+    """Index all image files (idempotent - preserves existing data)"""
     if not DATA_DIR.exists():
         logger.error(f"Data directory {DATA_DIR} does not exist!")
         return
     
     stats = {
         'images_indexed': 0,
+        'images_updated': 0,
+        'images_skipped': 0,
+        'images_deleted': 0,
         'directories_indexed': 0,
+        'directories_updated': 0,
         'errors': 0
     }
     
     with sqlite3.connect(DB_PATH) as conn:
         cursor = conn.cursor()
         
-        # Clear existing data
-        cursor.execute("DELETE FROM images")
-        cursor.execute("DELETE FROM directories")
+        # Get existing data for comparison
+        existing_images = {}
+        cursor.execute("SELECT file_path, file_hash, has_ocr_text, ocr_text_path FROM images")
+        for row in cursor.fetchall():
+            existing_images[row[0]] = {
+                'hash': row[1],
+                'has_ocr_text': row[2],
+                'ocr_text_path': row[3]
+            }
+        
+        existing_directories = set()
+        cursor.execute("SELECT path FROM directories")
+        for row in cursor.fetchall():
+            existing_directories.add(row[0])
+        
+        # Track current files to detect deletions
+        current_files = set()
+        current_directories = set()
         
         # Index directories first
         logger.info("Indexing directories...")
@@ -128,24 +147,44 @@ def index_images():
                     relative_path = str(dir_path.relative_to(DATA_DIR))
                     parent_path = str(dir_path.parent.relative_to(DATA_DIR)) if dir_path.parent != DATA_DIR else None
                     level = len(relative_path.split('\\')) - 1
+                    current_directories.add(relative_path)
                     
-                    cursor.execute("""
-                        INSERT INTO directories (path, name, parent_path, level)
-                        VALUES (?, ?, ?, ?)
-                    """, (relative_path, dir_path.name, parent_path, level))
-                    
-                    stats['directories_indexed'] += 1
+                    if relative_path in existing_directories:
+                        # Directory exists, update if needed
+                        cursor.execute("""
+                            UPDATE directories 
+                            SET name = ?, parent_path = ?, level = ?
+                            WHERE path = ?
+                        """, (dir_path.name, parent_path, level, relative_path))
+                        stats['directories_updated'] += 1
+                    else:
+                        # New directory
+                        cursor.execute("""
+                            INSERT INTO directories (path, name, parent_path, level)
+                            VALUES (?, ?, ?, ?)
+                        """, (relative_path, dir_path.name, parent_path, level))
+                        stats['directories_indexed'] += 1
+                        
                 except Exception as e:
                     logger.error(f"Error indexing directory {dir_path}: {e}")
                     stats['errors'] += 1
         
         # Index images
         logger.info("Indexing images...")
+        # Get all image files and sort them properly
+        image_files = []
         for file_path in DATA_DIR.rglob("*"):
             if file_path.is_file() and file_path.suffix.lower() in IMAGE_EXTENSIONS:
+                image_files.append(file_path)
+        
+        # Sort by path to ensure consistent order (IMAGES001, IMAGES002, etc.)
+        image_files.sort(key=lambda x: str(x))
+        
+        for file_path in image_files:
                 try:
                     relative_path = str(file_path.relative_to(DATA_DIR))
                     directory_path = str(file_path.parent.relative_to(DATA_DIR))
+                    current_files.add(relative_path)
                     
                     # Extract volume and subdirectory info
                     path_parts = relative_path.split('\\')
@@ -167,33 +206,84 @@ def index_images():
                     # Calculate file hash
                     file_hash = calculate_file_hash(file_path)
                     
-                    # Insert image record
-                    cursor.execute("""
-                        INSERT INTO images 
-                        (file_path, file_name, file_size, file_type, directory_path, 
-                         volume, subdirectory, file_hash, has_ocr_text, ocr_text_path)
-                        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-                    """, (
-                        relative_path,
-                        file_path.name,
-                        file_path.stat().st_size,
-                        file_path.suffix.lower(),
-                        directory_path,
-                        volume,
-                        subdirectory,
-                        file_hash,
-                        has_ocr_text,
-                        str(ocr_text_path.relative_to(DATA_DIR)) if has_ocr_text else None
-                    ))
+                    # Check if file already exists and if it's changed
+                    if relative_path in existing_images:
+                        existing_data = existing_images[relative_path]
+                        
+                        # Check if file has changed (hash comparison)
+                        if existing_data['hash'] == file_hash:
+                            # File unchanged, preserve OCR status
+                            stats['images_skipped'] += 1
+                            continue
+                        else:
+                            # File changed, update but preserve OCR status if still valid
+                            if existing_data['has_ocr_text'] and has_ocr_text:
+                                # Keep existing OCR status
+                                has_ocr_text = existing_data['has_ocr_text']
+                                ocr_text_path_str = existing_data['ocr_text_path']
+                            else:
+                                # Update OCR status based on current file
+                                ocr_text_path_str = str(ocr_text_path.relative_to(DATA_DIR)) if has_ocr_text else None
+                            
+                            cursor.execute("""
+                                UPDATE images 
+                                SET file_name = ?, file_size = ?, file_type = ?, directory_path = ?,
+                                    volume = ?, subdirectory = ?, file_hash = ?, has_ocr_text = ?, 
+                                    ocr_text_path = ?, updated_at = CURRENT_TIMESTAMP
+                                WHERE file_path = ?
+                            """, (
+                                file_path.name,
+                                file_path.stat().st_size,
+                                file_path.suffix.lower(),
+                                directory_path,
+                                volume,
+                                subdirectory,
+                                file_hash,
+                                has_ocr_text,
+                                ocr_text_path_str,
+                                relative_path
+                            ))
+                            stats['images_updated'] += 1
+                    else:
+                        # New file
+                        cursor.execute("""
+                            INSERT INTO images 
+                            (file_path, file_name, file_size, file_type, directory_path, 
+                             volume, subdirectory, file_hash, has_ocr_text, ocr_text_path)
+                            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                        """, (
+                            relative_path,
+                            file_path.name,
+                            file_path.stat().st_size,
+                            file_path.suffix.lower(),
+                            directory_path,
+                            volume,
+                            subdirectory,
+                            file_hash,
+                            has_ocr_text,
+                            str(ocr_text_path.relative_to(DATA_DIR)) if has_ocr_text else None
+                        ))
+                        stats['images_indexed'] += 1
                     
-                    stats['images_indexed'] += 1
-                    
-                    if stats['images_indexed'] % 1000 == 0:
-                        logger.info(f"Indexed {stats['images_indexed']} images...")
+                    total_processed = stats['images_indexed'] + stats['images_updated'] + stats['images_skipped']
+                    if total_processed % 1000 == 0:
+                        logger.info(f"Processed {total_processed} images... (new: {stats['images_indexed']}, updated: {stats['images_updated']}, skipped: {stats['images_skipped']})")
                         
                 except Exception as e:
                     logger.error(f"Error indexing image {file_path}: {e}")
                     stats['errors'] += 1
+        
+        # Handle deleted files
+        logger.info("Checking for deleted files...")
+        for existing_path in existing_images:
+            if existing_path not in current_files:
+                cursor.execute("DELETE FROM images WHERE file_path = ?", (existing_path,))
+                stats['images_deleted'] += 1
+        
+        # Handle deleted directories
+        for existing_dir in existing_directories:
+            if existing_dir not in current_directories:
+                cursor.execute("DELETE FROM directories WHERE path = ?", (existing_dir,))
         
         # Update directory file counts
         logger.info("Updating directory file counts...")
@@ -286,8 +376,12 @@ def main():
     
     print(f"\n✅ Indexing complete!")
     print(f"📊 Database: {DB_PATH}")
-    print(f"📁 Images indexed: {stats['images_indexed']:,}")
-    print(f"📂 Directories indexed: {stats['directories_indexed']}")
+    print(f"📁 New images: {stats['images_indexed']:,}")
+    print(f"🔄 Updated images: {stats['images_updated']:,}")
+    print(f"⏭️ Skipped images: {stats['images_skipped']:,}")
+    print(f"🗑️ Deleted images: {stats['images_deleted']:,}")
+    print(f"📂 New directories: {stats['directories_indexed']}")
+    print(f"🔄 Updated directories: {stats['directories_updated']}")
     print(f"❌ Errors: {stats['errors']}")
 
 

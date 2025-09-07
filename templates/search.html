@@ -1,0 +1,1013 @@
+{% extends "base.html" %}
+
+{% block title %}Search Documents - Epstein Documents Browser{% endblock %}
+
+{% block description %}Advanced search through {{ "{:,}".format(total_images) }} congressional documents with thumbnail previews, OCR text search, and filtering options.{% endblock %}
+
+{% block og_title %}Search Documents - Epstein Documents Browser{% endblock %}
+
+{% block og_description %}Advanced search through {{ "{:,}".format(total_images) }} congressional documents with thumbnail previews and OCR text search.{% endblock %}
+
+{% block extra_css %}
+<style>
+    .search-container {
+        background: white;
+        border-radius: 10px;
+        box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        padding: 30px;
+        margin-bottom: 30px;
+    }
+    
+    .search-header {
+        text-align: center;
+        margin-bottom: 30px;
+    }
+    
+    .search-form {
+        max-width: 800px;
+        margin: 0 auto;
+    }
+    
+    .search-input-group {
+        position: relative;
+        margin-bottom: 20px;
+    }
+    
+    .search-input {
+        font-size: 1.1rem;
+        padding: 15px 50px 15px 20px;
+        border: 2px solid #e9ecef;
+        border-radius: 25px;
+        width: 100%;
+        transition: all 0.3s ease;
+    }
+    
+    .search-input:focus {
+        border-color: #007bff;
+        box-shadow: 0 0 0 0.2rem rgba(0,123,255,0.25);
+        outline: none;
+    }
+    
+    .search-btn {
+        position: absolute;
+        right: 5px;
+        top: 50%;
+        transform: translateY(-50%);
+        border: none;
+        background: #007bff;
+        color: white;
+        padding: 10px 20px;
+        border-radius: 20px;
+        cursor: pointer;
+        transition: background 0.3s ease;
+    }
+    
+    .search-btn:hover {
+        background: #0056b3;
+    }
+    
+    .filters-row {
+        display: flex;
+        gap: 15px;
+        flex-wrap: wrap;
+        justify-content: center;
+        margin-bottom: 20px;
+    }
+    
+    .filter-group {
+        display: flex;
+        flex-direction: column;
+        min-width: 150px;
+    }
+    
+    .filter-label {
+        font-size: 0.9rem;
+        font-weight: 600;
+        color: #495057;
+        margin-bottom: 5px;
+    }
+    
+    .filter-select {
+        padding: 8px 12px;
+        border: 1px solid #ced4da;
+        border-radius: 5px;
+        background: white;
+    }
+    
+    .results-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 20px;
+        padding-bottom: 15px;
+        border-bottom: 2px solid #e9ecef;
+    }
+    
+    .results-count {
+        font-size: 1.1rem;
+        font-weight: 600;
+        color: #495057;
+    }
+    
+    .view-toggle {
+        display: flex;
+        gap: 5px;
+    }
+    
+    .view-btn {
+        padding: 8px 12px;
+        border: 1px solid #ced4da;
+        background: white;
+        cursor: pointer;
+        transition: all 0.3s ease;
+    }
+    
+    .view-btn.active {
+        background: #007bff;
+        color: white;
+        border-color: #007bff;
+    }
+    
+    .view-btn:first-child {
+        border-radius: 5px 0 0 5px;
+    }
+    
+    .view-btn:last-child {
+        border-radius: 0 5px 5px 0;
+    }
+    
+    .results-grid {
+        display: none;
+        grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+        gap: 20px;
+        margin-bottom: 30px;
+    }
+    
+    .results-grid.active {
+        display: grid;
+    }
+    
+    .results-list {
+        display: none;
+    }
+    
+    .results-list.active {
+        display: block;
+    }
+    
+    .pagination-container {
+        margin-top: 30px;
+        padding: 20px 0;
+        border-top: 1px solid #e9ecef;
+    }
+    
+    .pagination-info {
+        text-align: center;
+        margin-bottom: 15px;
+        color: #6c757d;
+        font-size: 14px;
+    }
+    
+    .pagination-controls {
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        gap: 10px;
+        flex-wrap: wrap;
+    }
+    
+    .pagination-btn {
+        padding: 8px 16px;
+        border: 1px solid #dee2e6;
+        background: white;
+        color: #495057;
+        border-radius: 5px;
+        cursor: pointer;
+        transition: all 0.2s ease;
+        font-size: 14px;
+    }
+    
+    .pagination-btn:hover:not(:disabled) {
+        background: #e9ecef;
+        border-color: #adb5bd;
+    }
+    
+    .pagination-btn:disabled {
+        opacity: 0.5;
+        cursor: not-allowed;
+    }
+    
+    .pagination-pages {
+        display: flex;
+        gap: 5px;
+        align-items: center;
+    }
+    
+    .page-number {
+        padding: 8px 12px;
+        border: 1px solid #dee2e6;
+        background: white;
+        color: #495057;
+        border-radius: 5px;
+        cursor: pointer;
+        transition: all 0.2s ease;
+        font-size: 14px;
+        min-width: 40px;
+        text-align: center;
+    }
+    
+    .page-number:hover {
+        background: #e9ecef;
+        border-color: #adb5bd;
+    }
+    
+    .page-number.active {
+        background: #007bff;
+        color: white;
+        border-color: #007bff;
+    }
+    
+    .page-ellipsis {
+        padding: 8px 4px;
+        color: #6c757d;
+        font-size: 14px;
+    }
+    
+    .document-card {
+        background: white;
+        border: 1px solid #e9ecef;
+        border-radius: 10px;
+        overflow: hidden;
+        transition: all 0.3s ease;
+        cursor: pointer;
+        text-decoration: none;
+        color: inherit;
+    }
+    
+    .document-card:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+        text-decoration: none;
+        color: inherit;
+    }
+    
+    .document-thumbnail {
+        width: 100%;
+        height: 200px;
+        background: #f8f9fa;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        position: relative;
+        overflow: hidden;
+    }
+    
+    .document-thumbnail img {
+        width: 100%;
+        height: 100%;
+        object-fit: cover;
+        transition: transform 0.3s ease;
+    }
+    
+    .document-card:hover .document-thumbnail img {
+        transform: scale(1.05);
+    }
+    
+    .document-info {
+        padding: 15px;
+    }
+    
+    .document-title {
+        font-size: 1rem;
+        font-weight: 600;
+        margin-bottom: 8px;
+        color: #212529;
+        line-height: 1.3;
+        display: -webkit-box;
+        -webkit-line-clamp: 2;
+        -webkit-box-orient: vertical;
+        overflow: hidden;
+    }
+    
+    .document-meta {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 8px;
+    }
+    
+    .document-id {
+        font-size: 0.85rem;
+        color: #6c757d;
+        font-weight: 500;
+    }
+    
+    .ocr-badge {
+        padding: 2px 8px;
+        border-radius: 12px;
+        font-size: 0.75rem;
+        font-weight: 600;
+    }
+    
+    .ocr-badge.has-ocr {
+        background: #d4edda;
+        color: #155724;
+    }
+    
+    .ocr-badge.no-ocr {
+        background: #f8d7da;
+        color: #721c24;
+    }
+    
+    .document-path {
+        font-size: 0.8rem;
+        color: #6c757d;
+        margin-bottom: 10px;
+        display: -webkit-box;
+        -webkit-line-clamp: 1;
+        -webkit-box-orient: vertical;
+        overflow: hidden;
+    }
+    
+    .document-excerpt {
+        font-size: 0.85rem;
+        color: #495057;
+        line-height: 1.4;
+        display: -webkit-box;
+        -webkit-line-clamp: 3;
+        -webkit-box-orient: vertical;
+        overflow: hidden;
+        background: #f8f9fa;
+        padding: 8px;
+        border-radius: 5px;
+        margin-top: 8px;
+    }
+    
+    .list-item {
+        display: flex;
+        background: white;
+        border: 1px solid #e9ecef;
+        border-radius: 8px;
+        margin-bottom: 10px;
+        overflow: hidden;
+        transition: all 0.3s ease;
+        text-decoration: none;
+        color: inherit;
+    }
+    
+    .list-item:hover {
+        box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+        text-decoration: none;
+        color: inherit;
+    }
+    
+    .list-thumbnail {
+        width: 120px;
+        height: 80px;
+        background: #f8f9fa;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        flex-shrink: 0;
+    }
+    
+    .list-thumbnail img {
+        width: 100%;
+        height: 100%;
+        object-fit: cover;
+    }
+    
+    .list-content {
+        flex: 1;
+        padding: 15px;
+        display: flex;
+        flex-direction: column;
+        justify-content: space-between;
+    }
+    
+    .list-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: flex-start;
+        margin-bottom: 8px;
+    }
+    
+    .list-title {
+        font-size: 1rem;
+        font-weight: 600;
+        color: #212529;
+        margin: 0;
+        flex: 1;
+        margin-right: 10px;
+    }
+    
+    .list-meta {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        margin-bottom: 8px;
+    }
+    
+    .list-path {
+        font-size: 0.8rem;
+        color: #6c757d;
+        margin-bottom: 8px;
+    }
+    
+    .list-excerpt {
+        font-size: 0.85rem;
+        color: #495057;
+        line-height: 1.4;
+        display: -webkit-box;
+        -webkit-line-clamp: 2;
+        -webkit-box-orient: vertical;
+        overflow: hidden;
+    }
+    
+    .loading {
+        text-align: center;
+        padding: 40px;
+        color: #6c757d;
+    }
+    
+    .no-results {
+        text-align: center;
+        padding: 60px 20px;
+        color: #6c757d;
+    }
+    
+    .no-results i {
+        font-size: 3rem;
+        margin-bottom: 20px;
+        color: #dee2e6;
+    }
+    
+    .pagination {
+        display: flex;
+        justify-content: center;
+        margin-top: 30px;
+    }
+    
+    /* Mobile responsive */
+    @media (max-width: 768px) {
+        .search-container {
+            padding: 20px;
+            margin-bottom: 20px;
+        }
+        
+        .filters-row {
+            flex-direction: column;
+            align-items: center;
+        }
+        
+        .filter-group {
+            width: 100%;
+            max-width: 300px;
+        }
+        
+        .results-grid {
+            grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
+            gap: 15px;
+        }
+        
+        .document-thumbnail {
+            height: 150px;
+        }
+        
+        .list-item {
+            flex-direction: column;
+        }
+        
+        .list-thumbnail {
+            width: 100%;
+            height: 120px;
+        }
+        
+        .results-header {
+            flex-direction: column;
+            gap: 15px;
+            align-items: stretch;
+        }
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="search-container">
+    <div class="search-header">
+        <h1><i class="fas fa-search me-2"></i>Advanced Document Search</h1>
+        <p class="text-muted">Search through {{ "{:,}".format(total_images) }} congressional documents with thumbnail previews and OCR text search</p>
+    </div>
+    
+    <div class="search-form">
+        <div class="search-input-group">
+            <input type="text" class="search-input" id="search-input" placeholder="Search by filename, content, or keywords..." value="{{ query or '' }}">
+            <button class="search-btn" onclick="performSearch()">
+                <i class="fas fa-search"></i>
+            </button>
+        </div>
+        
+        <div class="filters-row">
+            <div class="filter-group">
+                <label class="filter-label">Search Type</label>
+                <select class="filter-select" id="search-type">
+                    <option value="all">All Content</option>
+                    <option value="filename">Filename Only</option>
+                    <option value="ocr">OCR Text Only</option>
+                </select>
+            </div>
+            
+            <div class="filter-group">
+                <label class="filter-label">OCR Status</label>
+                <select class="filter-select" id="ocr-filter">
+                    <option value="all">All Documents</option>
+                    <option value="with-ocr">With OCR Text</option>
+                    <option value="without-ocr">Without OCR Text</option>
+                </select>
+            </div>
+            
+            <div class="filter-group">
+                <label class="filter-label">Sort By</label>
+                <select class="filter-select" id="sort-by">
+                    <option value="relevance">Relevance</option>
+                    <option value="filename">Filename</option>
+                    <option value="id">Document ID</option>
+                </select>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div id="search-results" style="display: none;">
+    <div class="results-header">
+        <div class="results-count" id="results-count">Searching...</div>
+        <div class="view-toggle">
+            <button class="view-btn" onclick="setView('grid')" data-view="grid">
+                <i class="fas fa-th"></i> Grid
+            </button>
+            <button class="view-btn active" onclick="setView('list')" data-view="list">
+                <i class="fas fa-list"></i> List
+            </button>
+        </div>
+    </div>
+    
+    <div class="results-grid" id="grid-view">
+        <div class="loading">
+            <i class="fas fa-spinner fa-spin fa-2x"></i>
+            <p>Searching documents...</p>
+        </div>
+    </div>
+    
+    <div class="results-list active" id="list-view">
+        <div class="loading">
+            <i class="fas fa-spinner fa-spin fa-2x"></i>
+            <p>Searching documents...</p>
+        </div>
+    </div>
+    
+    <div class="pagination-container" id="pagination-container" style="display: none;">
+        <div class="pagination-info">
+            <span id="pagination-info">Showing 1-50 of 1,234 results</span>
+        </div>
+        <div class="pagination-controls">
+            <button class="pagination-btn" id="prev-btn" onclick="changePage(-1)" disabled>
+                <i class="fas fa-chevron-left"></i> Previous
+            </button>
+            <div class="pagination-pages" id="pagination-pages">
+                <!-- Page numbers will be inserted here -->
+            </div>
+            <button class="pagination-btn" id="next-btn" onclick="changePage(1)" disabled>
+                Next <i class="fas fa-chevron-right"></i>
+            </button>
+        </div>
+    </div>
+</div>
+
+<div id="search-placeholder">
+    <div class="no-results">
+        <i class="fas fa-search"></i>
+        <h4>Start Your Search</h4>
+        <p>Enter a search term above to find documents by filename or content</p>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+let currentView = 'list';
+let currentPage = 1;
+let totalPages = 1;
+let paginationData = null;
+
+// Initialize search if there's a query
+{% if query %}
+document.addEventListener('DOMContentLoaded', function() {
+    performSearch();
+});
+{% endif %}
+
+function performSearch() {
+    console.log('performSearch called');
+    
+    const searchInput = document.getElementById('search-input');
+    if (!searchInput) {
+        console.error('Search input element not found');
+        return;
+    }
+    
+    const query = searchInput.value.trim();
+    console.log('Search query:', query);
+    
+    if (!query) {
+        showNoResults('Please enter a search term');
+        return;
+    }
+    
+    const searchType = document.getElementById('search-type').value;
+    const ocrFilter = document.getElementById('ocr-filter').value;
+    const sortBy = document.getElementById('sort-by').value;
+    
+    console.log('Search parameters:', { searchType, ocrFilter, sortBy });
+    
+    showLoading();
+    
+    const params = new URLSearchParams({
+        q: query,
+        type: searchType,
+        ocr: ocrFilter,
+        sort: sortBy,
+        page: currentPage
+    });
+    
+    console.log('Making request to:', `/api/search?${params}`);
+    
+    fetch(`/api/search?${params}`)
+        .then(response => {
+            console.log('Response received:', response.status);
+            return response.json();
+        })
+        .then(data => {
+            console.log('Search results:', data);
+            displayResults(data);
+        })
+        .catch(error => {
+            console.error('Search error:', error);
+            showError('Search failed. Please try again.');
+        });
+}
+
+function displayResults(data) {
+    console.log('displayResults called with data:', data);
+    
+    const resultsCount = document.getElementById('results-count');
+    const gridView = document.getElementById('grid-view');
+    const listView = document.getElementById('list-view');
+    const paginationContainer = document.getElementById('pagination-container');
+    
+    console.log('DOM elements found:', {
+        resultsCount: !!resultsCount,
+        gridView: !!gridView,
+        listView: !!listView,
+        paginationContainer: !!paginationContainer
+    });
+    
+    // Store pagination data
+    paginationData = data.pagination || null;
+    
+    if (resultsCount) {
+        if (paginationData) {
+            const startResult = (paginationData.page - 1) * paginationData.per_page + 1;
+            const endResult = Math.min(startResult + data.results.length - 1, paginationData.total_count);
+            resultsCount.textContent = `Showing ${startResult}-${endResult} of ${paginationData.total_count.toLocaleString()} results`;
+        } else {
+            resultsCount.textContent = `Found ${data.results.length} results`;
+        }
+        console.log('Updated results count');
+    } else {
+        console.error('results-count element not found');
+    }
+    
+    if (data.results.length === 0) {
+        console.log('No results, showing no results message');
+        showNoResults('No documents found matching your search criteria');
+        return;
+    }
+    
+    console.log('Generating HTML for', data.results.length, 'results');
+    
+    // Generate grid view HTML
+    let gridHtml = '';
+    data.results.forEach(result => {
+        gridHtml += generateDocumentCard(result);
+    });
+    if (gridView) {
+        gridView.innerHTML = gridHtml;
+        console.log('Updated grid view');
+    } else {
+        console.error('grid-view element not found');
+    }
+    
+    // Generate list view HTML
+    let listHtml = '';
+    data.results.forEach(result => {
+        listHtml += generateListItem(result);
+    });
+    if (listView) {
+        listView.innerHTML = listHtml;
+        console.log('Updated list view');
+    } else {
+        console.error('list-view element not found');
+    }
+    
+    // Show appropriate view
+    console.log('Current view:', currentView);
+    if (currentView === 'grid') {
+        if (gridView) gridView.classList.add('active');
+        if (listView) listView.classList.remove('active');
+        console.log('Showing grid view');
+    } else {
+        if (gridView) gridView.classList.remove('active');
+        if (listView) listView.classList.add('active');
+        console.log('Showing list view');
+    }
+    
+    // Update pagination controls
+    updatePagination();
+}
+
+function generateDocumentCard(result) {
+    const thumbnailUrl = `/api/thumbnail/${result.id}`;
+    const ocrBadge = result.has_ocr_text ? 
+        '<span class="ocr-badge has-ocr"><i class="fas fa-file-text me-1"></i>OCR</span>' :
+        '<span class="ocr-badge no-ocr"><i class="fas fa-clock me-1"></i>Pending</span>';
+    
+    const excerpt = result.excerpt ? 
+        `<div class="document-excerpt">${highlightSearchTerm(result.excerpt, document.getElementById('search-input').value)}</div>` : '';
+    
+    return `
+        <a href="/view/${result.id}" class="document-card">
+            <div class="document-thumbnail">
+                <img src="${thumbnailUrl}" alt="${result.file_name}" loading="lazy">
+            </div>
+            <div class="document-info">
+                <div class="document-title">${result.file_name}</div>
+                <div class="document-meta">
+                    <span class="document-id">#${result.id}</span>
+                    ${ocrBadge}
+                </div>
+                <div class="document-path">${result.directory_path}</div>
+                ${excerpt}
+            </div>
+        </a>
+    `;
+}
+
+function generateListItem(result) {
+    const thumbnailUrl = `/api/thumbnail/${result.id}`;
+    const ocrBadge = result.has_ocr_text ? 
+        '<span class="ocr-badge has-ocr"><i class="fas fa-file-text me-1"></i>OCR</span>' :
+        '<span class="ocr-badge no-ocr"><i class="fas fa-clock me-1"></i>Pending</span>';
+    
+    const excerpt = result.excerpt ? 
+        `<div class="list-excerpt">${highlightSearchTerm(result.excerpt, document.getElementById('search-input').value)}</div>` : '';
+    
+    return `
+        <a href="/view/${result.id}" class="list-item">
+            <div class="list-thumbnail">
+                <img src="${thumbnailUrl}" alt="${result.file_name}" loading="lazy">
+            </div>
+            <div class="list-content">
+                <div class="list-header">
+                    <h6 class="list-title">${result.file_name}</h6>
+                    <div class="list-meta">
+                        <span class="document-id">#${result.id}</span>
+                        ${ocrBadge}
+                    </div>
+                </div>
+                <div class="list-path">${result.directory_path}</div>
+                ${excerpt}
+            </div>
+        </a>
+    `;
+}
+
+function highlightSearchTerm(text, searchTerm) {
+    if (!searchTerm) return text;
+    const regex = new RegExp(`(${searchTerm})`, 'gi');
+    return text.replace(regex, '<mark>$1</mark>');
+}
+
+function setView(view) {
+    console.log('setView called with:', view);
+    currentView = view;
+    
+    // Update button states
+    const buttons = document.querySelectorAll('.view-btn');
+    console.log('Found buttons:', buttons.length);
+    
+    buttons.forEach(btn => {
+        btn.classList.remove('active');
+    });
+    
+    const activeButton = document.querySelector(`[data-view="${view}"]`);
+    console.log('Active button found:', !!activeButton);
+    if (activeButton) {
+        activeButton.classList.add('active');
+    }
+    
+    // Show/hide views
+    const gridView = document.getElementById('grid-view');
+    const listView = document.getElementById('list-view');
+    
+    console.log('Views found:', {
+        gridView: !!gridView,
+        listView: !!listView
+    });
+    
+    if (view === 'grid') {
+        if (gridView) gridView.classList.add('active');
+        if (listView) listView.classList.remove('active');
+        console.log('Showing grid view');
+    } else {
+        if (gridView) gridView.classList.remove('active');
+        if (listView) listView.classList.add('active');
+        console.log('Showing list view');
+    }
+}
+
+function showLoading() {
+    const searchResults = document.getElementById('search-results');
+    const searchPlaceholder = document.getElementById('search-placeholder');
+    const gridView = document.getElementById('grid-view');
+    const listView = document.getElementById('list-view');
+    
+    // Show search results, hide placeholder
+    if (searchResults) searchResults.style.display = 'block';
+    if (searchPlaceholder) searchPlaceholder.style.display = 'none';
+    
+    const loadingHtml = `
+        <div class="loading">
+            <i class="fas fa-spinner fa-spin fa-2x"></i>
+            <p>Searching documents...</p>
+        </div>
+    `;
+    
+    if (gridView) {
+        gridView.innerHTML = loadingHtml;
+    }
+    if (listView) {
+        listView.innerHTML = loadingHtml;
+    }
+}
+
+function showNoResults(message) {
+    const searchResults = document.getElementById('search-results');
+    const searchPlaceholder = document.getElementById('search-placeholder');
+    const gridView = document.getElementById('grid-view');
+    const listView = document.getElementById('list-view');
+    
+    // Show search results, hide placeholder
+    if (searchResults) searchResults.style.display = 'block';
+    if (searchPlaceholder) searchPlaceholder.style.display = 'none';
+    
+    const noResultsHtml = `
+        <div class="no-results">
+            <i class="fas fa-search"></i>
+            <h4>No Results Found</h4>
+            <p>${message}</p>
+        </div>
+    `;
+    
+    if (gridView) {
+        gridView.innerHTML = noResultsHtml;
+    }
+    if (listView) {
+        listView.innerHTML = noResultsHtml;
+    }
+}
+
+function showError(message) {
+    const searchResults = document.getElementById('search-results');
+    const searchPlaceholder = document.getElementById('search-placeholder');
+    const gridView = document.getElementById('grid-view');
+    const listView = document.getElementById('list-view');
+    
+    // Show search results, hide placeholder
+    if (searchResults) searchResults.style.display = 'block';
+    if (searchPlaceholder) searchPlaceholder.style.display = 'none';
+    
+    const errorHtml = `
+        <div class="no-results">
+            <i class="fas fa-exclamation-triangle"></i>
+            <h4>Search Error</h4>
+            <p>${message}</p>
+        </div>
+    `;
+    
+    if (gridView) {
+        gridView.innerHTML = errorHtml;
+    }
+    if (listView) {
+        listView.innerHTML = errorHtml;
+    }
+}
+
+function updatePagination() {
+    if (!paginationData) return;
+    
+    const paginationContainer = document.getElementById('pagination-container');
+    const prevBtn = document.getElementById('prev-btn');
+    const nextBtn = document.getElementById('next-btn');
+    const paginationPages = document.getElementById('pagination-pages');
+    
+    if (!paginationContainer || !prevBtn || !nextBtn || !paginationPages) return;
+    
+    // Show pagination if there are multiple pages
+    if (paginationData && paginationData.total_pages > 1) {
+        paginationContainer.style.display = 'block';
+        
+        // Update prev/next buttons
+        prevBtn.disabled = !paginationData.has_prev;
+        nextBtn.disabled = !paginationData.has_next;
+        
+        // Generate page numbers
+        let pageHtml = '';
+        const currentPage = paginationData.page;
+        const totalPages = paginationData.total_pages;
+        
+        // Always show first page
+        if (currentPage > 3) {
+            pageHtml += `<span class="page-number" onclick="goToPage(1)">1</span>`;
+            if (currentPage > 4) {
+                pageHtml += `<span class="page-ellipsis">...</span>`;
+            }
+        }
+        
+        // Show pages around current page
+        const startPage = Math.max(1, currentPage - 2);
+        const endPage = Math.min(totalPages, currentPage + 2);
+        
+        for (let i = startPage; i <= endPage; i++) {
+            const activeClass = i === currentPage ? 'active' : '';
+            pageHtml += `<span class="page-number ${activeClass}" onclick="goToPage(${i})">${i}</span>`;
+        }
+        
+        // Always show last page
+        if (currentPage < totalPages - 2) {
+            if (currentPage < totalPages - 3) {
+                pageHtml += `<span class="page-ellipsis">...</span>`;
+            }
+            pageHtml += `<span class="page-number" onclick="goToPage(${totalPages})">${totalPages}</span>`;
+        }
+        
+        paginationPages.innerHTML = pageHtml;
+    } else {
+        paginationContainer.style.display = 'none';
+    }
+}
+
+function changePage(direction) {
+    if (!paginationData) return;
+    
+    const newPage = currentPage + direction;
+    if (newPage >= 1 && newPage <= paginationData.total_pages) {
+        goToPage(newPage);
+    }
+}
+
+function goToPage(page) {
+    if (!paginationData || page < 1 || page > paginationData.total_pages) return;
+    
+    currentPage = page;
+    performSearch();
+}
+
+// Wait for DOM to be ready
+document.addEventListener('DOMContentLoaded', function() {
+    // Search on Enter key
+    const searchInput = document.getElementById('search-input');
+    if (searchInput) {
+        searchInput.addEventListener('keypress', function(e) {
+            if (e.key === 'Enter') {
+                performSearch();
+            }
+        });
+    }
+
+    // Auto-search on filter changes
+    const searchType = document.getElementById('search-type');
+    const ocrFilter = document.getElementById('ocr-filter');
+    const sortBy = document.getElementById('sort-by');
+    
+    if (searchType) {
+        searchType.addEventListener('change', performSearch);
+    }
+    if (ocrFilter) {
+        ocrFilter.addEventListener('change', performSearch);
+    }
+    if (sortBy) {
+        sortBy.addEventListener('change', performSearch);
+    }
+});
+</script>
+{% endblock %}

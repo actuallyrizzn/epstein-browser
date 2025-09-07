@@ -1,0 +1,335 @@
+{% extends "base.html" %}
+
+{% block title %}Help & Documentation - Epstein Documents Browser{% endblock %}
+
+{% block description %}Complete documentation and help guide for the Epstein Documents Browser. Learn how to browse congressional records, use OCR features, and understand the open source project by Mark Rizzn Hopkins.{% endblock %}
+
+{% block og_title %}Help & Documentation - Epstein Documents Browser{% endblock %}
+
+{% block og_description %}Complete documentation and help guide for the Epstein Documents Browser. Learn how to browse congressional records, use OCR features, and understand the open source project.{% endblock %}
+
+{% block twitter_title %}Help & Documentation - Epstein Documents Browser{% endblock %}
+
+{% block twitter_description %}Complete documentation and help guide for the Epstein Documents Browser. Learn how to browse congressional records, use OCR features, and understand the open source project.{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-12">
+        <h1 class="mb-4">
+            <i class="fas fa-question-circle me-2"></i>
+            Help & Documentation
+        </h1>
+        <p class="lead">
+            This is the reference implementation of the 
+            <a href="https://github.com/actuallyrizzn/epstein-browser" target="_blank" class="text-decoration-none">
+                <i class="fab fa-github me-1"></i>Epstein Documents Browser
+            </a> 
+            project - a comprehensive document browsing system for congressional records.
+        </p>
+    </div>
+</div>
+
+<!-- Navigation -->
+<div class="row mb-4">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-body">
+                <h5><i class="fas fa-list me-2"></i>Quick Navigation</h5>
+                <div class="row">
+                    <div class="col-md-3 mb-2">
+                        <a href="#overview" class="btn btn-outline-primary w-100">
+                            <i class="fas fa-info-circle me-2"></i>Overview
+                        </a>
+                    </div>
+                    <div class="col-md-3 mb-2">
+                        <a href="#features" class="btn btn-outline-primary w-100">
+                            <i class="fas fa-star me-2"></i>Features
+                        </a>
+                    </div>
+                    <div class="col-md-3 mb-2">
+                        <a href="#usage" class="btn btn-outline-primary w-100">
+                            <i class="fas fa-play me-2"></i>Usage Guide
+                        </a>
+                    </div>
+                    <div class="col-md-3 mb-2">
+                        <a href="#technical" class="btn btn-outline-primary w-100">
+                            <i class="fas fa-cogs me-2"></i>Technical Details
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Overview Section -->
+<section id="overview" class="mb-5">
+    <div class="card">
+        <div class="card-header">
+            <h3><i class="fas fa-info-circle me-2"></i>Project Overview</h3>
+        </div>
+        <div class="card-body">
+            <p>
+                The Epstein Documents Browser is a sophisticated document management system designed to make 
+                congressional records easily accessible and searchable. This reference implementation demonstrates 
+                the full capabilities of the open-source project.
+            </p>
+            
+            <h5>What We're Working With</h5>
+            <ul>
+                <li><strong>24,528+ document images</strong> from congressional records</li>
+                <li><strong>Multiple formats</strong> including TIF, JPG, and other image types</li>
+                <li><strong>Organized structure</strong> with volumes and subdirectories</li>
+                <li><strong>OCR processing</strong> for full-text search capabilities</li>
+            </ul>
+
+            <h5>Open Source Project</h5>
+            <p>
+                This implementation is based on the open-source 
+                <a href="https://github.com/actuallyrizzn/epstein-browser" target="_blank" class="text-decoration-none">
+                    <i class="fab fa-github me-1"></i>Epstein Documents Browser
+                </a> 
+                project. The repository contains all the code, documentation, and tools needed to set up 
+                your own instance of this system.
+            </p>
+        </div>
+    </div>
+</section>
+
+<!-- Features Section -->
+<section id="features" class="mb-5">
+    <div class="card">
+        <div class="card-header">
+            <h3><i class="fas fa-star me-2"></i>Key Features</h3>
+        </div>
+        <div class="card-body">
+            <div class="row">
+                <div class="col-md-6">
+                    <h5><i class="fas fa-eye me-2"></i>Document Viewer</h5>
+                    <ul>
+                        <li><strong>Archive.org-style interface</strong> - Clean, focused document browsing</li>
+                        <li><strong>Zoom controls</strong> - Click to zoom or use +/- buttons</li>
+                        <li><strong>Fullscreen mode</strong> - Press F11 or click fullscreen button</li>
+                        <li><strong>Progress tracking</strong> - Visual progress bar showing position</li>
+                        <li><strong>Keyboard navigation</strong> - Arrow keys, Home, End for quick navigation</li>
+                    </ul>
+
+                    <h5><i class="fas fa-search me-2"></i>Search & Discovery</h5>
+                    <ul>
+                        <li><strong>Filename search</strong> - Find documents by name</li>
+                        <li><strong>Quick navigation</strong> - Jump to first, middle, or last document</li>
+                        <li><strong>Random browsing</strong> - Discover documents randomly</li>
+                        <li><strong>OCR text display</strong> - Extracted text shown alongside images</li>
+                    </ul>
+                </div>
+                <div class="col-md-6">
+                    <h5><i class="fas fa-cogs me-2"></i>Technical Features</h5>
+                    <ul>
+                        <li><strong>Idempotent indexing</strong> - Safe to re-run during file transfers</li>
+                        <li><strong>Automatic format conversion</strong> - TIF files converted to JPEG for browser compatibility</li>
+                        <li><strong>Real-time statistics</strong> - Live OCR progress tracking</li>
+                        <li><strong>Responsive design</strong> - Works on desktop and mobile devices</li>
+                        <li><strong>Production ready</strong> - Screen-based process management</li>
+                    </ul>
+
+                    <h5><i class="fas fa-database me-2"></i>Data Management</h5>
+                    <ul>
+                        <li><strong>SQLite database</strong> - Fast, reliable data storage</li>
+                        <li><strong>File hash tracking</strong> - Detect changed files efficiently</li>
+                        <li><strong>OCR progress tracking</strong> - Resume processing from any point</li>
+                        <li><strong>Directory structure mapping</strong> - Complete file organization</li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+
+<!-- Usage Guide Section -->
+<section id="usage" class="mb-5">
+    <div class="card">
+        <div class="card-header">
+            <h3><i class="fas fa-play me-2"></i>Usage Guide</h3>
+        </div>
+        <div class="card-body">
+            <h5>Getting Started</h5>
+            <ol>
+                <li><strong>Browse Documents</strong> - Click "Start Reading" to begin viewing documents</li>
+                <li><strong>Navigate</strong> - Use Previous/Next buttons or arrow keys to move between documents</li>
+                <li><strong>Zoom</strong> - Click on images to zoom in/out, or use +/- buttons</li>
+                <li><strong>Search</strong> - Use the search box to find documents by filename</li>
+                <li><strong>View OCR Text</strong> - Extracted text appears in the right panel when available</li>
+            </ol>
+
+            <h5>Keyboard Shortcuts</h5>
+            <div class="row">
+                <div class="col-md-6">
+                    <ul>
+                        <li><kbd>←</kbd> <kbd>→</kbd> - Navigate between documents</li>
+                        <li><kbd>Home</kbd> - Jump to first document</li>
+                        <li><kbd>End</kbd> - Jump to last document</li>
+                        <li><kbd>F11</kbd> - Toggle fullscreen mode</li>
+                    </ul>
+                </div>
+                <div class="col-md-6">
+                    <ul>
+                        <li><kbd>+</kbd> <kbd>=</kbd> - Zoom in</li>
+                        <li><kbd>-</kbd> - Zoom out</li>
+                        <li><kbd>Esc</kbd> - Exit fullscreen</li>
+                        <li><kbd>Click</kbd> - Toggle zoom on image</li>
+                    </ul>
+                </div>
+            </div>
+
+            <h5>Understanding the Interface</h5>
+            <div class="alert alert-info">
+                <h6><i class="fas fa-info-circle me-2"></i>Document Viewer Layout</h6>
+                <ul class="mb-0">
+                    <li><strong>Top Bar</strong> - Document name, progress bar, and navigation controls</li>
+                    <li><strong>Main Panel</strong> - Document image with zoom and pan capabilities</li>
+                    <li><strong>Text Panel</strong> - OCR extracted text (when available)</li>
+                    <li><strong>Bottom Bar</strong> - Page controls and zoom controls</li>
+                </ul>
+            </div>
+        </div>
+    </div>
+</section>
+
+<!-- Technical Details Section -->
+<section id="technical" class="mb-5">
+    <div class="card">
+        <div class="card-header">
+            <h3><i class="fas fa-cogs me-2"></i>Technical Details</h3>
+        </div>
+        <div class="card-body">
+            <h5>System Architecture</h5>
+            <div class="row">
+                <div class="col-md-6">
+                    <h6>Backend Components</h6>
+                    <ul>
+                        <li><strong>Flask Web Server</strong> - Python web framework</li>
+                        <li><strong>SQLite Database</strong> - Document metadata and OCR tracking</li>
+                        <li><strong>Image Indexer</strong> - Scans and catalogs all document images</li>
+                        <li><strong>OCR Processor</strong> - Tesseract-based text extraction</li>
+                        <li><strong>Screen Management</strong> - Production process management</li>
+                    </ul>
+                </div>
+                <div class="col-md-6">
+                    <h6>Frontend Components</h6>
+                    <ul>
+                        <li><strong>Bootstrap 5</strong> - Responsive UI framework</li>
+                        <li><strong>Font Awesome</strong> - Icon library</li>
+                        <li><strong>Custom JavaScript</strong> - Navigation and interaction</li>
+                        <li><strong>PIL/Pillow</strong> - Image processing and format conversion</li>
+                    </ul>
+                </div>
+            </div>
+
+            <h5>Database Schema</h5>
+            <div class="alert alert-light">
+                <h6>Images Table</h6>
+                <ul class="mb-0">
+                    <li><code>id</code> - Unique identifier</li>
+                    <li><code>file_path</code> - Relative path to image file</li>
+                    <li><code>file_name</code> - Original filename</li>
+                    <li><code>file_size</code> - File size in bytes</li>
+                    <li><code>file_type</code> - File extension</li>
+                    <li><code>has_ocr_text</code> - Boolean flag for OCR completion</li>
+                    <li><code>ocr_text_path</code> - Path to extracted text file</li>
+                    <li><code>file_hash</code> - MD5 hash for change detection</li>
+                </ul>
+            </div>
+
+            <h5>Process Management</h5>
+            <p>
+                The system uses screen sessions for production process management:
+            </p>
+            <ul>
+                <li><strong>Web Server</strong> - <code>./start_app.sh {start|stop|restart|status|logs}</code></li>
+                <li><strong>OCR Processing</strong> - <code>./start_ocr.sh {start|stop|restart|status|logs}</code></li>
+                <li><strong>Image Indexing</strong> - <code>python3 index_images.py</code></li>
+            </ul>
+
+            <h5>Open Source Repository</h5>
+            <div class="alert alert-success">
+                <h6><i class="fab fa-github me-2"></i>GitHub Repository</h6>
+                <p class="mb-2">
+                    The complete source code, documentation, and setup instructions are available at:
+                </p>
+                <p class="mb-0">
+                    <a href="https://github.com/actuallyrizzn/epstein-browser" target="_blank" class="btn btn-outline-success">
+                        <i class="fab fa-github me-2"></i>github.com/actuallyrizzn/epstein-browser
+                    </a>
+                </p>
+            </div>
+        </div>
+    </div>
+</section>
+
+<!-- API Documentation -->
+<section id="api" class="mb-5">
+    <div class="card">
+        <div class="card-header">
+            <h3><i class="fas fa-code me-2"></i>API Endpoints</h3>
+        </div>
+        <div class="card-body">
+            <p>This system provides several API endpoints for programmatic access:</p>
+            
+            <h5>Available Endpoints</h5>
+            <ul>
+                <li><code>GET /api/stats</code> - Get processing statistics and progress</li>
+                <li><code>GET /api/search?q=query</code> - Search documents by filename</li>
+                <li><code>GET /api/first-image</code> - Get first and last image IDs</li>
+                <li><code>GET /image/&lt;path&gt;</code> - Serve image files with format conversion</li>
+            </ul>
+
+            <h5>Example API Usage</h5>
+            <div class="alert alert-light">
+                <pre><code># Get current statistics
+curl {{ request.url_root }}api/stats
+
+# Search for documents
+curl "{{ request.url_root }}api/search?q=DOJ-OGR"
+
+# Get first/last image IDs
+curl {{ request.url_root }}api/first-image</code></pre>
+            </div>
+        </div>
+    </div>
+</section>
+
+<!-- Footer -->
+<div class="row">
+    <div class="col-12">
+        <div class="card bg-light">
+            <div class="card-body text-center">
+                <h6><i class="fas fa-book me-2"></i>Additional Resources</h6>
+                <p class="mb-0">
+                    For more information, setup instructions, and to contribute to the project, visit:
+                    <a href="https://github.com/actuallyrizzn/epstein-browser" target="_blank" class="text-decoration-none">
+                        <i class="fab fa-github me-1"></i>github.com/actuallyrizzn/epstein-browser
+                    </a>
+                </p>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    // Smooth scrolling for navigation links
+    document.querySelectorAll('a[href^="#"]').forEach(anchor => {
+        anchor.addEventListener('click', function (e) {
+            e.preventDefault();
+            const target = document.querySelector(this.getAttribute('href'));
+            if (target) {
+                target.scrollIntoView({
+                    behavior: 'smooth',
+                    block: 'start'
+                });
+            }
+        });
+    });
+</script>
+{% endblock %}
