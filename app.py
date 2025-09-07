@@ -765,7 +765,10 @@ def help_context():
     total_images = conn.execute('SELECT COUNT(*) FROM images').fetchone()[0]
     conn.close()
     
-    return render_template('help/context.html', total_images=total_images)
+    # Load blog posts for timeline
+    blog_posts = load_blog_posts()
+    
+    return render_template('help/context.html', total_images=total_images, blog_posts=blog_posts)
 
 
 @app.route('/data/screenshots/<filename>')

@@ -15,9 +15,13 @@ A simple, Archive.org-style document browser for congressional records released 
 ### Step 1: Download the Documents
 1. **Go to the Google Drive folder:** https://drive.google.com/drive/folders/1TrGxDGQLDLZu1vvvZDBAh-e7wN3y6Hoz
 2. **Select all files** (Ctrl+A or Cmd+A)
-3. **Right-click and choose "Download"** - this will create a ZIP file
+3. **Right-click and choose "Download"** - this will create a ZIP file (~71 GB)
 4. **Extract the ZIP file** to a folder named `data` in your project directory
 5. **Verify the structure:** You should have `data/Prod 01_20250822/VOL00001/IMAGES/` with 12 IMAGES subdirectories
+
+**⚠️ Directory Structure:** This is the official structure as released by Congress. Do not try to reorganize it - the application is designed to work with their unconventional organization.
+
+**⚠️ Storage Requirement:** The complete document collection is approximately **71 GB**. Ensure you have sufficient free space before downloading.
 
 ### Step 2: Set Up Python Environment
 ```bash

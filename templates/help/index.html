@@ -14,7 +14,14 @@
 
 {% block content %}
 <div class="row">
-    <div class="col-12">
+    <div class="col-lg-8">
+        <nav aria-label="breadcrumb">
+            <ol class="breadcrumb">
+                <li class="breadcrumb-item"><a href="/">Home</a></li>
+                <li class="breadcrumb-item active" aria-current="page">Help & Documentation</li>
+            </ol>
+        </nav>
+        
         <h1 class="mb-4">
             <i class="fas fa-question-circle me-2"></i>
             Help & Documentation
@@ -26,8 +33,6 @@
             </a> 
             project - a comprehensive document browsing system for congressional records.
         </p>
-    </div>
-</div>
 
 <!-- Quick Stats -->
 <div class="row mb-4">
@@ -187,6 +192,12 @@
                 </p>
             </div>
         </div>
+    </div>
+</div>
+    </div>
+    
+    <div class="col-lg-4">
+        {% include 'help/_quick_links.html' %}
     </div>
 </div>
 {% endblock %}

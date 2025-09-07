@@ -6,6 +6,13 @@
 <div class="container mt-4">
     <div class="row">
         <div class="col-lg-8">
+            <nav aria-label="breadcrumb">
+                <ol class="breadcrumb">
+                    <li class="breadcrumb-item"><a href="{{ url_for('help_page') }}">Help</a></li>
+                    <li class="breadcrumb-item active" aria-current="page">Installation Guide</li>
+                </ol>
+            </nav>
+            
             <div class="card">
                 <div class="card-header">
                     <h1><i class="fas fa-download me-2"></i>Installation Guide</h1>
@@ -23,21 +30,27 @@
                         <div class="col-md-6">
                             <h5>Minimum Requirements</h5>
                             <ul>
-                                <li><strong>CPU:</strong> 2 cores, 2.0 GHz</li>
+                                <li><strong>CPU:</strong> 2 cores, 1.5+ GHz (tested on dual-core systems)</li>
                                 <li><strong>RAM:</strong> 4 GB</li>
-                                <li><strong>Storage:</strong> 50 GB free space</li>
+                                <li><strong>Storage:</strong> <strong>71+ GB free space</strong> (for document data)</li>
                                 <li><strong>OS:</strong> Windows 10+, macOS 10.14+, or Linux</li>
                             </ul>
                         </div>
                         <div class="col-md-6">
                             <h5>Recommended</h5>
                             <ul>
-                                <li><strong>CPU:</strong> 4+ cores, 3.0+ GHz</li>
-                                <li><strong>RAM:</strong> 8+ GB</li>
-                                <li><strong>Storage:</strong> 100+ GB SSD</li>
-                                <li><strong>Network:</strong> Stable internet connection</li>
+                                <li><strong>CPU:</strong> 4+ cores, 2.0+ GHz (for faster OCR processing)</li>
+                                <li><strong>RAM:</strong> 8+ GB (for better performance with large datasets)</li>
+                                <li><strong>Storage:</strong> 100+ GB SSD (71GB for data + 29GB for system/processing)</li>
+                                <li><strong>Network:</strong> Stable internet connection (for initial download)</li>
                             </ul>
                         </div>
+                    </div>
+                    
+                    <div class="alert alert-warning">
+                        <i class="fas fa-exclamation-triangle me-2"></i>
+                        <strong>Storage Warning:</strong> The congressional documents require <strong>71 GB minimum</strong> of free space. 
+                        This is the actual size of the released document collection. Plan accordingly!
                     </div>
 
                     <h2><i class="fas fa-code me-2"></i>Prerequisites</h2>
@@ -105,19 +118,33 @@ PORT = 5000
 EOF</code></pre>
                     </div>
 
-                    <h3>Step 4: Initialize the Database</h3>
+                    <h3>Step 4: Index the Documents</h3>
+                    <p>This step scans all document images and creates the database:</p>
                     <div class="help-code">
-                        <pre><code># Initialize the database
-python -c "
-from app import init_database, init_analytics_table
-init_database()
-init_analytics_table()
-print('Database initialized successfully!')
-"</code></pre>
+                        <pre><code># Index all document images into the database
+python index_images.py
+
+# This will:
+# - Scan the data directory for image files
+# - Create images.db SQLite database
+# - Process each image and extract metadata
+# - Show progress as it works through the files</code></pre>
+                    </div>
+                    
+                    <div class="alert alert-info">
+                        <i class="fas fa-info-circle me-2"></i>
+                        <strong>Note:</strong> The indexing process may take some time depending on the number of images. 
+                        The script will show progress as it processes each file.
                     </div>
 
                     <h2><i class="fas fa-download me-2"></i>Document Setup</h2>
                     <p>This application works with local document files. You'll need to download the documents from the official sources and place them in the correct directory structure.</p>
+                    
+                    <div class="alert alert-info">
+                        <i class="fas fa-info-circle me-2"></i>
+                        <strong>Download Size:</strong> The complete document collection is approximately <strong>71 GB</strong>. 
+                        Ensure you have sufficient storage space and a stable internet connection for the download.
+                    </div>
 
                     <h3>Download Documents</h3>
                     <div class="help-code">
@@ -126,13 +153,15 @@ mkdir -p data
 
 # Download from Google Drive (primary source)
 # https://drive.google.com/drive/folders/1TrGxDGQLDLZu1vvvZDBAh-e7wN3y6Hoz
+# Size: ~71 GB
 
 # Or use Dropbox backup
-# https://www.dropbox.com/scl/fo/98fthv8otekjk28lcrnc5/AIn3egnE58MYe4Bn4fliVBw</code></pre>
+# https://www.dropbox.com/scl/fo/98fthv8otekjk28lcrnc5/AIn3egnE58MYe4Bn4fliVBw
+# Size: ~71 GB</code></pre>
                     </div>
 
                     <h3>Directory Structure</h3>
-                    <p>Ensure your documents are organized in the following structure:</p>
+                    <p>When you download and extract the official documents, they will be organized in this structure:</p>
                     <div class="help-code">
                         <pre><code>data/
 └── Prod 01_20250822/
@@ -146,38 +175,91 @@ mkdir -p data
             ├── NATIVE008/
             └── ... (other NATIVE directories)</code></pre>
                     </div>
+                    
+                    <div class="alert alert-warning">
+                        <i class="fas fa-exclamation-triangle me-2"></i>
+                        <strong>Important:</strong> This is the official directory structure as released by the House Oversight Committee. 
+                        <strong>Do not try to reorganize or "fix" this structure</strong> - the application is designed to work around 
+                        their unconventional organization. Just extract the files as-is and let the browser handle the rest.
+                    </div>
 
                     <h2><i class="fas fa-play me-2"></i>Running the Application</h2>
                     
-                    <h3>Development Mode</h3>
+                    <h3>Step 1: Index the Documents</h3>
+                    <p>Before running the web application, you need to index the document images into the database:</p>
                     <div class="help-code">
-                        <pre><code># Start the Flask development server
-python app.py
+                        <pre><code># Index all document images into the database
+python index_images.py
 
-# The application will be available at:
-# http://localhost:5000</code></pre>
+# This will scan the data directory and create images.db
+# Progress will be shown as it processes each image</code></pre>
                     </div>
 
-                    <h3>Production Mode</h3>
+                    <h3>Step 2: Start the Web Application</h3>
                     <div class="help-code">
-                        <pre><code># Using Gunicorn (recommended for production)
-pip install gunicorn
-gunicorn -w 4 -b 0.0.0.0:8000 app:app
+                        <pre><code># Start the Flask application
+python app.py
 
-# Using uWSGI
-pip install uwsgi
-uwsgi --http :8000 --module app:app --processes 4 --threads 2</code></pre>
+# The application will start and show:
+# 🚀 Starting Epstein Documents Browser (Development)...
+# 📖 Browse: http://localhost:8080
+# 📊 Stats: http://localhost:8080/api/stats
+# 🌐 Accessible from: http://0.0.0.0:8080
+# 
+# Press Ctrl+C to stop the server</code></pre>
+                    </div>
+
+                    <h3>Environment Configuration</h3>
+                    <p>The application uses environment variables for configuration. You can create a <code>.env</code> file:</p>
+                    <div class="help-code">
+                        <pre><code># Create .env file for configuration
+cat > .env << EOF
+# Data directory (where documents are stored)
+DATA_DIR=data
+
+# Database file path
+DATABASE_PATH=images.db
+
+# Flask configuration
+FLASK_ENV=development
+HOST=0.0.0.0
+PORT=8080
+DEBUG=True
+EOF</code></pre>
+                    </div>
+
+                    <h3>Production Deployment</h3>
+                    <p>For production, set environment variables and use a proper WSGI server:</p>
+                    <div class="help-code">
+                        <pre><code># Set production environment
+export FLASK_ENV=production
+export HOST=127.0.0.1
+export PORT=8080
+export DEBUG=False
+
+# Install production WSGI server
+pip install gunicorn
+
+# Run with Gunicorn
+gunicorn -w 4 -b 127.0.0.1:8080 app:app</code></pre>
                     </div>
 
                     <h2><i class="fas fa-cog me-2"></i>Configuration Options</h2>
                     
                     <h3>Environment Variables</h3>
                     <div class="help-code">
-                        <pre><code># Set environment variables
-export FLASK_ENV=production
-export FLASK_DEBUG=False
-export DATABASE_URL=sqlite:///images.db
-export DATA_DIR=/path/to/data</code></pre>
+                        <pre><code># Application Configuration
+export DATA_DIR=data                    # Directory containing document images
+export DATABASE_PATH=images.db          # SQLite database file path
+
+# Flask Configuration
+export FLASK_ENV=development            # or 'production'
+export HOST=0.0.0.0                    # or '127.0.0.1' for production
+export PORT=8080                       # Port to run on
+export DEBUG=True                      # or 'False' for production
+
+# Optional: Secret key for sessions
+export SECRET_KEY=your-secret-key-here</code></pre>
                     </div>
 
                     <h3>Custom Styling</h3>
@@ -196,47 +278,105 @@ export DATA_DIR=/path/to/data</code></pre>
                     
                     <h3>Common Issues</h3>
                     
-                    <h4>Database Connection Errors</h4>
+                    <h4>Missing Dependencies</h4>
                     <div class="help-code">
-                        <pre><code># Check database file permissions
+                        <pre><code># Install missing packages
+pip install -r requirements.txt
+
+# Common missing packages:
+# - markdown (for blog posts)
+# - pytesseract (for OCR functionality)
+# - Pillow (for image processing)</code></pre>
+                    </div>
+
+                    <h4>Data Directory Not Found</h4>
+                    <div class="help-code">
+                        <pre><code># Check if data directory exists
+ls -la data/
+
+# Create data directory if missing
+mkdir -p data
+
+# Set correct data directory
+export DATA_DIR=data</code></pre>
+                    </div>
+
+                    <h4>Database Issues</h4>
+                    <div class="help-code">
+                        <pre><code># Check if database exists
 ls -la images.db
 
-# Recreate database if corrupted
+# Recreate database by re-indexing
 rm images.db
-python -c "from app import init_database; init_database()"</code></pre>
+python index_images.py
+
+# Check database permissions
+chmod 644 images.db</code></pre>
                     </div>
 
-                    <h4>API Connection Issues</h4>
+                    <h4>Port Already in Use</h4>
                     <div class="help-code">
-                        <pre><code># Test API connectivity
-curl -I https://epstein-documents.gopoversight.com/api/stats
+                        <pre><code># Windows - Check what's using port 8080
+netstat -ano | findstr :8080
 
-# Check network connectivity
-ping epstein-documents.gopoversight.com</code></pre>
+# Windows - Kill process using the port
+taskkill /PID <PID_NUMBER> /F
+
+# Use a different port
+set PORT=8081
+python app.py</code></pre>
                     </div>
 
-                    <h4>Memory Issues</h4>
+                    <h4>Image Processing Errors</h4>
                     <div class="help-code">
-                        <pre><code># Monitor memory usage
-python -c "
-import psutil
-print(f'Memory usage: {psutil.virtual_memory().percent}%')
-print(f'Available: {psutil.virtual_memory().available / 1024**3:.1f} GB')
-"</code></pre>
+                        <pre><code># Check if Tesseract is installed (for OCR)
+tesseract --version
+
+# Install Tesseract OCR
+# Windows: Download from GitHub releases
+# macOS: brew install tesseract
+# Linux: sudo apt-get install tesseract-ocr</code></pre>
                     </div>
 
-                    <h3>Logs and Debugging</h3>
+                    <h4>Indexing Problems</h4>
                     <div class="help-code">
-                        <pre><code># Enable debug logging
-export FLASK_DEBUG=1
-export FLASK_ENV=development
+                        <pre><code># Check indexing progress and errors
+python index_images.py
 
-# View application logs
-tail -f app.log
-
-# Check system resources
-htop  # or top on some systems</code></pre>
+# The script will show:
+# - Progress as it processes images
+# - Error count if any files fail
+# - Summary of indexed/updated/skipped files</code></pre>
                     </div>
+
+                    <h3>Error Messages</h3>
+                    <p>Common error messages and solutions:</p>
+                    <ul>
+                        <li><strong>"Data directory does not exist"</strong> - Create the <code>data/</code> directory and download documents</li>
+                        <li><strong>"No module named 'markdown'"</strong> - Run <code>pip install -r requirements.txt</code></li>
+                        <li><strong>"Address already in use"</strong> - Port 8080 is busy, use a different port or kill the existing process</li>
+                        <li><strong>"TIF conversion failed"</strong> - Image file is corrupted or unsupported format</li>
+                        <li><strong>"Error reading OCR file"</strong> - OCR text file is missing or corrupted</li>
+                    </ul>
+
+                    <h3>Debugging</h3>
+                    <div class="help-code">
+                        <pre><code># Enable debug mode
+set FLASK_ENV=development
+set DEBUG=True
+python app.py
+
+# Check application output for errors
+# The app will print error messages to console</code></pre>
+                    </div>
+
+                    <h3>Performance Tips</h3>
+                    <ul>
+                        <li><strong>Database:</strong> Keep <code>images.db</code> on fast storage (SSD recommended)</li>
+                        <li><strong>Memory:</strong> 4GB+ RAM recommended for smooth operation</li>
+                        <li><strong>Storage:</strong> Ensure 71GB+ free space for document data</li>
+                        <li><strong>Indexing:</strong> Run indexing during off-peak hours as it's resource-intensive</li>
+                    </ul>
 
                     <h2><i class="fas fa-question-circle me-2"></i>Getting Help</h2>
                     <p>If you encounter issues during installation or setup:</p>
@@ -249,35 +389,15 @@ htop  # or top on some systems</code></pre>
 
                     <div class="alert alert-success">
                         <i class="fas fa-check-circle me-2"></i>
-                        <strong>Success!</strong> Once installed, your instance will be able to sync data from the main repository 
-                        and provide the same search and browsing capabilities locally.
+                        <strong>Success!</strong> Once installed, your instance will provide search and browsing capabilities 
+                        for the local document collection.
                     </div>
                 </div>
             </div>
         </div>
         
         <div class="col-lg-4">
-            <div class="card">
-                <div class="card-header">
-                    <h5><i class="fas fa-link me-2"></i>Quick Links</h5>
-                </div>
-                <div class="card-body">
-                    <div class="d-grid gap-2">
-                        <a href="{{ url_for('help_overview') }}" class="btn btn-outline-primary">
-                            <i class="fas fa-info-circle me-1"></i>Project Overview
-                        </a>
-                        <a href="{{ url_for('help_features') }}" class="btn btn-outline-info">
-                            <i class="fas fa-star me-1"></i>Features
-                        </a>
-                        <a href="{{ url_for('help_usage') }}" class="btn btn-outline-success">
-                            <i class="fas fa-play me-1"></i>Usage Guide
-                        </a>
-                        <a href="{{ url_for('help_api') }}" class="btn btn-outline-warning">
-                            <i class="fas fa-code me-1"></i>API Guide
-                        </a>
-                    </div>
-                </div>
-            </div>
+            {% include 'help/_quick_links.html' %}
             
             <div class="card mt-3">
                 <div class="card-header">

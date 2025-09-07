@@ -6,7 +6,7 @@
 
 {% block content %}
 <div class="row">
-    <div class="col-12">
+    <div class="col-lg-8">
         <nav aria-label="breadcrumb">
             <ol class="breadcrumb">
                 <li class="breadcrumb-item"><a href="{{ url_for('help_page') }}">Help</a></li>
@@ -18,8 +18,6 @@
             <i class="fas fa-info-circle me-2"></i>
             Project Overview
         </h1>
-    </div>
-</div>
 
 <!-- What We're Working With -->
 <div class="row mb-4">
@@ -183,24 +181,10 @@
         </div>
     </div>
 </div>
-
-<!-- Navigation -->
-<div class="row">
-    <div class="col-12">
-        <div class="card">
-            <div class="card-body text-center">
-                <h5>Continue Learning</h5>
-                <a href="{{ url_for('help_features') }}" class="btn btn-primary me-2">
-                    <i class="fas fa-star me-1"></i>View Features
-                </a>
-                <a href="{{ url_for('help_usage') }}" class="btn btn-success me-2">
-                    <i class="fas fa-play me-1"></i>Usage Guide
-                </a>
-                <a href="{{ url_for('help_api') }}" class="btn btn-info">
-                    <i class="fas fa-code me-1"></i>API Guide
-                </a>
-            </div>
-        </div>
+    </div>
+    
+    <div class="col-lg-4">
+        {% include 'help/_quick_links.html' %}
     </div>
 </div>
 {% endblock %}

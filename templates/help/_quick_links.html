@@ -1,0 +1,28 @@
+<!-- Quick Links Card -->
+<div class="card">
+    <div class="card-header">
+        <h5><i class="fas fa-link me-2"></i>Quick Links</h5>
+    </div>
+    <div class="card-body">
+        <div class="d-grid gap-2">
+            <a href="{{ url_for('help_overview') }}" class="btn btn-outline-primary">
+                <i class="fas fa-info-circle me-1"></i>Project Overview
+            </a>
+            <a href="{{ url_for('help_features') }}" class="btn btn-outline-info">
+                <i class="fas fa-star me-1"></i>Features
+            </a>
+            <a href="{{ url_for('help_usage') }}" class="btn btn-outline-success">
+                <i class="fas fa-play me-1"></i>Usage Guide
+            </a>
+            <a href="{{ url_for('help_api') }}" class="btn btn-outline-warning">
+                <i class="fas fa-code me-1"></i>API Guide
+            </a>
+            <a href="{{ url_for('help_installation') }}" class="btn btn-outline-secondary">
+                <i class="fas fa-download me-1"></i>Installation
+            </a>
+            <a href="{{ url_for('help_context') }}" class="btn btn-outline-dark">
+                <i class="fas fa-landmark me-1"></i>Official Context
+            </a>
+        </div>
+    </div>
+</div>

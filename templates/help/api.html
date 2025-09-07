@@ -6,7 +6,7 @@
 
 {% block content %}
 <div class="row">
-    <div class="col-12">
+    <div class="col-lg-8">
         <nav aria-label="breadcrumb">
             <ol class="breadcrumb">
                 <li class="breadcrumb-item"><a href="{{ url_for('help_page') }}">Help</a></li>
@@ -453,24 +453,9 @@ curl "{{ request.url_root }}image/Prod%2001_20250822/VOL00001/IMAGES/IMAGES001/D
         </div>
     </div>
 </div>
-
-<!-- Navigation -->
-<div class="row">
-    <div class="col-12">
-        <div class="card">
-            <div class="card-body text-center">
-                <h5>Continue Learning</h5>
-                <a href="{{ url_for('help_usage') }}" class="btn btn-success me-2">
-                    <i class="fas fa-play me-1"></i>Usage Guide
-                </a>
-                <a href="{{ url_for('help_features') }}" class="btn btn-warning me-2">
-                    <i class="fas fa-star me-1"></i>Features
-                </a>
-                <a href="{{ url_for('help_overview') }}" class="btn btn-primary">
-                    <i class="fas fa-info-circle me-1"></i>Project Overview
-                </a>
-            </div>
-        </div>
+    
+    <div class="col-lg-4">
+        {% include 'help/_quick_links.html' %}
     </div>
 </div>
 {% endblock %}
