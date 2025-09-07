@@ -3,7 +3,7 @@
 # Epstein Documents OCR Processor - Production Startup Script
 # This script manages the OCR processor in a screen session
 
-APP_DIR="/root/epstein-browser/epstein-browser"
+APP_DIR="/root/epstein-browser"
 APP_NAME="epstein-ocr"
 SCREEN_NAME="epstein_ocr"
 PYTHON_CMD="venv/bin/python"

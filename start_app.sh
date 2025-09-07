@@ -3,7 +3,7 @@
 # Epstein Documents Browser - Production Startup Script
 # This script manages the Flask app in a screen session
 
-APP_DIR="/root/epstein-browser/epstein-browser"
+APP_DIR="/root/epstein-browser"
 APP_NAME="epstein-browser"
 SCREEN_NAME="epstein_app"
 PYTHON_CMD="venv/bin/python"
