@@ -4,3 +4,11 @@ Werkzeug>=2.0.0
 python-dotenv>=1.0.0
 markdown>=3.0.0
 pytesseract>=0.3.10
+
+# Testing dependencies
+pytest>=8.0.0
+pytest-cov>=6.0.0
+pytest-mock>=3.0.0
+pytest-flask>=1.0.0
+selenium>=4.0.0
+requests-mock>=1.0.0
