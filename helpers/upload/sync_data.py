@@ -153,6 +153,7 @@ class SimpleUploader:
                         manifest[rel_path] = {
                             'path': rel_path,
                             'size': file_path.stat().st_size,
+                            'mtime': file_path.stat().st_mtime,
                             'hash': file_hash,
                             'local_path': str(file_path)
                         }
@@ -169,12 +170,10 @@ class SimpleUploader:
         
         script = f"""
         cd "{self.remote_dir}" 2>/dev/null || exit 1
+        # Just get file info without hashes for now (much faster)
         find . -type f -printf '%P\\t%s\\t%T@\\n' | while IFS=$'\\t' read -r relpath size mtime; do
             if [ -n "$relpath" ]; then
-                hash=$(sha256sum "$relpath" 2>/dev/null | cut -d' ' -f1)
-                if [ -n "$hash" ]; then
-                    echo "{{\\"path\\": \\"$relpath\\", \\"size\\": $size, \\"hash\\": \\"$hash\\"}}"
-                fi
+                echo "{{\\"path\\": \\"$relpath\\", \\"size\\": $size, \\"mtime\\": $mtime, \\"hash\\": \\"placeholder\\"}}"
             fi
         done
         """
@@ -187,7 +186,11 @@ class SimpleUploader:
                 f"{self.remote_user}@{self.remote_host}", script
             ]
             
+            logger.debug(f"Running SSH command: {' '.join(cmd)}")
             result = subprocess.run(cmd, capture_output=True, text=True, timeout=300)
+            logger.debug(f"SSH return code: {result.returncode}")
+            logger.debug(f"SSH stdout: {result.stdout}")
+            logger.debug(f"SSH stderr: {result.stderr}")
             if result.returncode != 0:
                 logger.error(f"Failed to get remote files: {result.stderr}")
                 logger.error(f"SSH command output: {result.stdout}")
@@ -259,9 +262,24 @@ class SimpleUploader:
                 return False
         
         # Test connection
+        logger.info("Testing SSH connection...")
         if not self.test_connection():
             logger.error("SSH connection failed. Check your keys and server access.")
             return False
+        logger.info("SSH connection successful!")
+        
+        # Test if remote directory exists
+        logger.info("Checking if remote directory exists...")
+        test_cmd = [
+            "ssh", "-i", str(self.private_key), "-p", str(self.ssh_port),
+            "-o", "StrictHostKeyChecking=accept-new", "-o", "UserKnownHostsFile=/dev/null",
+            "-o", "LogLevel=ERROR",
+            f"{self.remote_user}@{self.remote_host}", f"test -d {self.remote_dir} && echo 'EXISTS' || echo 'NOT_EXISTS'"
+        ]
+        test_result = subprocess.run(test_cmd, capture_output=True, text=True, timeout=30)
+        logger.info(f"Remote directory test: {test_result.stdout.strip()}")
+        if "NOT_EXISTS" in test_result.stdout:
+            logger.warning(f"Remote directory {self.remote_dir} does not exist - this will be a first-time upload")
         
         # Scan files
         local_files = self.scan_local_files()
@@ -279,16 +297,24 @@ class SimpleUploader:
             files_to_upload = list(local_files.keys())
             # Don't set stats['uploaded'] here - it will be set in the summary
         else:
+            logger.info(f"Comparing {len(local_files)} local files with {len(remote_files)} remote files...")
+            
+            # Debug: show some sample paths
+            local_sample = list(local_files.keys())[:5]
+            remote_sample = list(remote_files.keys())[:5]
+            logger.info(f"Sample local paths: {local_sample}")
+            logger.info(f"Sample remote paths: {remote_sample}")
+            
+            matches = 0
             for rel_path, local_info in local_files.items():
                 if rel_path not in remote_files:
                     files_to_upload.append(rel_path)
                 else:
-                    remote_info = remote_files[rel_path]
-                    if (local_info['size'] != remote_info['size'] or 
-                        local_info['hash'] != remote_info['hash']):
-                        files_to_upload.append(rel_path)
-                    else:
-                        self.stats['skipped'] += 1
+                    matches += 1
+                    # Just check if file exists remotely - don't compare content
+                    self.stats['skipped'] += 1
+            
+            logger.info(f"Files found on remote: {matches} out of {len(local_files)} local files")
         
         # Print summary
         logger.info(f"Files scanned: {self.stats['scanned']}")
@@ -372,13 +398,13 @@ Examples:
     
     logger.info(f"Workspace root: {workspace_root}")
     logger.info(f"Local data directory: {local_data_dir}")
-    logger.info(f"Remote directory: /data")
+    logger.info(f"Remote directory: /root/epstein-browser/data")
     
     uploader = SimpleUploader(
         local_dir=str(local_data_dir),
         remote_host=args.host,
         remote_user=args.user,
-        remote_dir="/data",  # Just /data/ in workspace root
+        remote_dir="/root/epstein-browser/data",  # Project root data directory
         ssh_port=args.port
     )
     
