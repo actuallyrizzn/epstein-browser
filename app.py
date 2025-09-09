@@ -941,6 +941,36 @@ def api_search():
         return jsonify({'error': str(e), 'results': []})
 
 
+@app.route('/api/document/<int:doc_id>')
+@rate_limit('stats')
+@handle_db_operations()
+def api_document(doc_id):
+    """Get document by ID with OCR text"""
+    conn = get_db_connection()
+    image = conn.execute(
+        'SELECT * FROM images WHERE id = ?', (doc_id,)
+    ).fetchone()
+    conn.close()
+    
+    if not image:
+        return jsonify({'error': 'Document not found'}), 404
+    
+    # Get OCR text if available
+    ocr_text = None
+    if image['has_ocr_text']:
+        ocr_text = get_ocr_text(image['file_path'])
+    
+    return jsonify({
+        'id': image['id'],
+        'file_path': image['file_path'],
+        'filename': image['file_name'],
+        'has_ocr_text': bool(image['has_ocr_text']),
+        'ocr_text': ocr_text,
+        'file_size': image['file_size'],
+        'created_at': image['created_at']
+    })
+
+
 @app.route('/api/first-image')
 @rate_limit('stats')
 @handle_db_operations()
