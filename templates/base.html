@@ -13,20 +13,24 @@
     <link rel="canonical" href="{% block canonical %}{{ request.url }}{% endblock %}">
     
     <!-- Open Graph / Facebook -->
-    <meta property="og:type" content="website">
+    <meta property="og:type" content="{% block og_type %}website{% endblock %}">
     <meta property="og:url" content="{{ request.url }}">
     <meta property="og:title" content="{% block og_title %}Epstein Documents Browser{% endblock %}">
     <meta property="og:description" content="{% block og_description %}Browse and search through congressional records and documents with advanced OCR capabilities. Open source document management system.{% endblock %}">
     <meta property="og:image" content="{% block og_image %}{{ url_for('static', filename='og-image.png', _external=True) }}{% endblock %}">
+    <meta property="og:image:alt" content="{% block og_image_alt %}Epstein Documents Browser - Congressional Records Search Interface{% endblock %}">
     <meta property="og:site_name" content="Epstein Documents Browser">
+    <meta property="og:locale" content="en_US">
     
     <!-- Twitter -->
     <meta property="twitter:card" content="summary_large_image">
+    <meta property="twitter:site" content="@actuallyrizzn">
+    <meta property="twitter:creator" content="@actuallyrizzn">
     <meta property="twitter:url" content="{{ request.url }}">
     <meta property="twitter:title" content="{% block twitter_title %}Epstein Documents Browser{% endblock %}">
     <meta property="twitter:description" content="{% block twitter_description %}Browse and search through congressional records and documents with advanced OCR capabilities. Open source document management system.{% endblock %}">
     <meta property="twitter:image" content="{% block twitter_image %}{{ url_for('static', filename='og-image.png', _external=True) }}{% endblock %}">
-    <meta property="twitter:creator" content="@actuallyrizzn">
+    <meta property="twitter:image:alt" content="{% block twitter_image_alt %}Epstein Documents Browser - Congressional Records Search Interface{% endblock %}">
     
     <!-- Additional SEO -->
     <meta name="theme-color" content="#007bff">

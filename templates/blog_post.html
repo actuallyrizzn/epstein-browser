@@ -10,6 +10,31 @@
 {% block twitter_title %}{{ post.title }} - {{ super() }}{% endblock %}
 {% block twitter_description %}{{ post.excerpt }}{% endblock %}
 
+{% block og_type %}article{% endblock %}
+{% block og_image_alt %}{{ post.title }} - Epstein Documents Browser Blog{% endblock %}
+{% block twitter_image_alt %}{{ post.title }} - Epstein Documents Browser Blog{% endblock %}
+
+{% block extra_head %}
+<!-- Article Structured Data -->
+<script type="application/ld+json">
+{
+    "@context": "https://schema.org",
+    "@type": "Article",
+    "headline": "{{ post.title|e }}",
+    "description": "{{ post.excerpt|e }}",
+    "author": {
+        "@type": "Person",
+        "name": "{{ post.author|e }}"
+    },
+    "publisher": {
+        "@type": "Organization",
+        "name": "Epstein Documents Browser"
+    },
+    "datePublished": "{{ post.date }}T00:00:00Z",
+    "dateModified": "{{ post.date }}T00:00:00Z"
+}
+</script>
+{% endblock %}
 
 {% block content %}
 <div class="container mt-4">
