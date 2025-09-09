@@ -50,7 +50,19 @@ python index_images.py
 # ✅ Indexing complete!
 ```
 
-### Step 4: Start the Web Application
+### Step 4: Process PDF Documents (Optional)
+```bash
+# If you have PDF documents to process, use the PDF explosion tool
+python helpers/explode_pdfs.py data/pdf-documents/ data/images/processed/
+
+# Run OCR processing on the new images
+python ocr_processor.py --input-dir data/images/processed/
+
+# Index the processed images into the database
+python index_images.py --input-dir data/images/processed/
+```
+
+### Step 5: Start the Web Application
 ```bash
 # Start the Flask web server
 python app.py
@@ -62,7 +74,7 @@ python app.py
 # Press Ctrl+C to stop the server
 ```
 
-### Step 5: Browse the Documents
+### Step 6: Browse the Documents
 - **Homepage:** http://localhost:8080
 - **API Stats:** http://localhost:8080/api/stats
 - **Document Viewer:** http://localhost:8080/view/1
@@ -83,6 +95,20 @@ python app.py
 - **Zoom controls** - Click to zoom, or use +/- buttons
 - **Fullscreen mode** - Press F11 or click fullscreen button
 
+### PDF Processing Pipeline
+- **PDF Explosion** - Convert multi-page PDFs to individual images
+- **Sequential Numbering** - Maintain consistent DOJ-OGR naming format
+- **Quality Assessment** - Automatic detection of poor scan quality
+- **Batch Processing** - Handle large document collections efficiently
+- **Error Detection** - Identify and flag pages needing manual review
+
+### Advanced OCR Capabilities
+- **Multi-Engine Support** - EasyOCR + Tesseract for optimal results
+- **Quality Scoring** - Automatic assessment of OCR accuracy
+- **Rescan Logic** - Automatic reprocessing of poor quality pages
+- **Context-Aware Search** - Full-text search with text excerpts
+- **Export Options** - Multiple output formats for processed text
+
 ### Keyboard Shortcuts
 - **Arrow Keys** - Navigate between documents
 - **Home/End** - Jump to first/last document
@@ -91,27 +117,94 @@ python app.py
 
 ### Search & Navigation
 - **Filename search** - Find documents by name
+- **Content search** - Full-text search across OCR results
+- **Context excerpts** - See search matches with surrounding text
 - **Quick navigation** - Jump to first, middle, or last document
 - **Random document** - Browse randomly
 - **Statistics** - Real-time OCR progress tracking
+
+## 📄 PDF Processing Guide
+
+### Processing New PDF Documents
+
+The system now includes comprehensive PDF processing capabilities for handling new document dumps:
+
+#### 1. PDF Explosion
+```bash
+# Convert PDFs to individual images with proper naming
+python helpers/explode_pdfs.py data/new-pdf-dump/ data/images/processed/
+
+# Options:
+# --dpi 600          # Higher DPI for better quality
+# --start-id 50000   # Custom starting ID
+```
+
+#### 2. OCR Processing
+```bash
+# Process images with OCR
+python ocr_processor.py --input-dir data/images/processed/
+
+# Options:
+# --quality-check    # Enable quality assessment
+# --rescan-poor      # Automatically rescan poor quality pages
+```
+
+#### 3. Database Integration
+```bash
+# Index processed images into searchable database
+python index_images.py --input-dir data/images/processed/
+
+# Options:
+# --source "9-8-25-release"  # Tag the source
+# --quality-threshold 30     # Set quality threshold
+```
+
+### PDF Processing Features
+
+- **Sequential Numbering**: Maintains DOJ-OGR-00000001.jpg format
+- **Quality Assessment**: Automatic detection of poor scan quality
+- **Batch Processing**: Handle large document collections efficiently
+- **Error Detection**: Identify pages needing manual review
+- **Mapping Files**: Track PDF-to-image conversion for reference
 
 ## 🗂️ File Structure
 
 ```
 epstein-release/
 ├── data/                          # Document images
-│   └── Prod 01_20250822/
-│       └── VOL00001/
-│           └── IMAGES/
-│               ├── IMAGES001/     # ~3,173 images
-│               ├── IMAGES002/     # ~3,014 images
-│               └── ...            # 12 total directories
+│   ├── Prod 01_20250822/         # Original congressional documents
+│   │   └── VOL00001/
+│   │       └── IMAGES/
+│   │           ├── IMAGES001/     # ~3,173 images
+│   │           ├── IMAGES002/     # ~3,014 images
+│   │           └── ...            # 12 total directories
+│   ├── 9-8-25-release/           # New Epstein Estate documents
+│   │   ├── Request No. 1.pdf     # 238 pages
+│   │   ├── Request No. 2.pdf     # 10 pages
+│   │   ├── Request No. 4.pdf     # 9 pages
+│   │   └── Request No. 8.pdf     # 99 pages
+│   └── images/                    # Processed images
+│       └── 9-8-25-release/       # Converted PDF pages
+│           ├── DOJ-OGR-00033296.jpg
+│           ├── DOJ-OGR-00033297.jpg
+│           └── ...                # 356 total images
+├── helpers/                       # Utility scripts
+│   ├── explode_pdfs.py           # PDF to images converter
+│   ├── venice_integration.py     # AI/LLM integration
+│   └── venice_sdk/               # Venice AI SDK
 ├── templates/                     # HTML templates
 │   ├── base.html                 # Base template
 │   ├── index.html                # Homepage
 │   └── viewer.html               # Document viewer
+├── tests/                        # Test suite
+│   ├── unit/                     # Unit tests
+│   ├── integration/              # Integration tests
+│   └── e2e/                      # End-to-end tests
+├── docs/                         # Documentation
+│   └── ERROR_DETECTION_RESCAN_PLAN.md
 ├── app.py                        # Flask web application
 ├── index_images.py               # Database indexer
+├── ocr_processor.py              # OCR processing
 ├── images.db                     # SQLite database
 └── README.md                     # This file
 ```
