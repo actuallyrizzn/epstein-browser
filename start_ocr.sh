@@ -33,16 +33,41 @@ print_error() {
     echo -e "${RED}[$(date '+%Y-%m-%d %H:%M:%S')]${NC} $1"
 }
 
-# Function to check if screen session exists
+# Function to check if screen session exists (live only)
 screen_exists() {
+    screen -list | grep -q "$SCREEN_NAME.*(Detached\|Attached)"
+}
+
+# Function to check if screen session exists (including dead)
+screen_exists_any() {
     screen -list | grep -q "$SCREEN_NAME"
+}
+
+# Function to check if screen session is dead
+screen_is_dead() {
+    screen -list | grep -q "$SCREEN_NAME.*(Dead"
+}
+
+# Function to clean up dead screen sessions
+cleanup_dead_screens() {
+    if screen_is_dead; then
+        print_warning "Found dead screen session, cleaning up..."
+        screen -wipe > /dev/null 2>&1
+        # Also try to kill any remaining dead sessions
+        screen -list | grep "$SCREEN_NAME.*(Dead" | awk '{print $1}' | cut -d. -f1 | xargs -r kill -9 2>/dev/null
+        sleep 1
+    fi
 }
 
 # Function to check if OCR is running in screen
 ocr_running() {
     if screen_exists; then
+        # Try to send a command to check if the session is responsive
         screen -S "$SCREEN_NAME" -X stuff "echo 'OCR check'\n" > /dev/null 2>&1
-        return $?
+        # Also check if the Python process is actually running
+        if pgrep -f "python.*ocr_processor_lite.py" > /dev/null; then
+            return 0
+        fi
     fi
     return 1
 }
@@ -75,7 +100,10 @@ start_ocr() {
         exit 1
     fi
     
-    # Kill existing screen session if it exists
+    # Clean up any dead screen sessions first
+    cleanup_dead_screens
+    
+    # Kill existing live screen session if it exists
     if screen_exists; then
         print_warning "Killing existing screen session..."
         screen -S "$SCREEN_NAME" -X quit
@@ -101,7 +129,7 @@ start_ocr() {
     sleep 3
     
     # Check if OCR started successfully
-    if screen_exists; then
+    if screen_exists && ocr_running; then
         print_success "$APP_NAME started successfully in screen session: $SCREEN_NAME"
         print_status "To view the OCR: screen -r $SCREEN_NAME"
         print_status "To detach from screen: Ctrl+A then D"
@@ -134,6 +162,21 @@ restart_ocr() {
     stop_ocr
     sleep 2
     start_ocr "$1"
+}
+
+# Function to start OCR only if not already running
+start_if_missing() {
+    # Clean up any dead screen sessions first
+    cleanup_dead_screens
+    
+    if screen_exists && ocr_running; then
+        print_status "$APP_NAME is already running in screen session: $SCREEN_NAME"
+        return 0
+    else
+        print_status "$APP_NAME not running, starting..."
+        # Pass through the max_images parameter if provided
+        start_ocr "$1"
+    fi
 }
 
 # Function to show status
@@ -192,38 +235,54 @@ show_logs() {
     fi
 }
 
+# Function to clean up dead sessions
+cleanup() {
+    print_status "Cleaning up dead screen sessions..."
+    cleanup_dead_screens
+    print_success "Cleanup complete"
+}
+
 # Function to show help
 show_help() {
     echo "Epstein Documents OCR Processor Management"
     echo "=========================================="
     echo ""
-    echo "Usage: $0 {start|stop|restart|status|logs|help} [max_images]"
+    echo "Usage: $0 {start|start-if-missing|stop|restart|status|logs|cleanup|help} [max_images]"
     echo ""
     echo "Commands:"
-    echo "  start [N]   - Start OCR processing (optionally limit to N images for testing)"
-    echo "  stop        - Stop OCR processing and kill screen session"
-    echo "  restart [N] - Restart OCR processing"
-    echo "  status      - Show OCR status and progress"
-    echo "  logs        - View OCR logs in screen session"
-    echo "  help        - Show this help message"
+    echo "  start [N]          - Start OCR processing (optionally limit to N images for testing)"
+    echo "  start-if-missing [N] - Start only if not already running (for crontab)"
+    echo "  stop               - Stop OCR processing and kill screen session"
+    echo "  restart [N]        - Restart OCR processing"
+    echo "  status             - Show OCR status and progress"
+    echo "  logs               - View OCR logs in screen session"
+    echo "  cleanup            - Clean up dead screen sessions"
+    echo "  help               - Show this help message"
     echo ""
     echo "Examples:"
-    echo "  $0 start           # Process all remaining images"
-    echo "  $0 start 100       # Process only 100 images for testing"
-    echo "  $0 restart 50      # Restart and process 50 images"
-    echo "  $0 status          # Check current progress"
-    echo "  $0 logs            # View real-time processing logs"
+    echo "  $0 start                # Process all remaining images"
+    echo "  $0 start 100            # Process only 100 images for testing"
+    echo "  $0 start-if-missing     # Start only if not running (crontab safe)"
+    echo "  $0 start-if-missing 50  # Start with 50 image limit if not running"
+    echo "  $0 restart 50           # Restart and process 50 images"
+    echo "  $0 status               # Check current progress"
+    echo "  $0 logs                 # View real-time processing logs"
+    echo "  $0 cleanup              # Clean up dead screen sessions"
     echo ""
     echo "Notes:"
     echo "  - OCR processing is idempotent (safe to restart)"
     echo "  - Use Ctrl+C in logs view to detach from screen"
     echo "  - Processing continues in background when detached"
+    echo "  - start-if-missing is safe for crontab use"
 }
 
 # Main script logic
 case "$1" in
     start)
         start_ocr "$2"
+        ;;
+    start-if-missing)
+        start_if_missing "$2"
         ;;
     stop)
         stop_ocr
@@ -237,11 +296,14 @@ case "$1" in
     logs)
         show_logs
         ;;
+    cleanup)
+        cleanup
+        ;;
     help|--help|-h)
         show_help
         ;;
     *)
-        echo "Usage: $0 {start|stop|restart|status|logs|help} [max_images]"
+        echo "Usage: $0 {start|start-if-missing|stop|restart|status|logs|cleanup|help} [max_images]"
         echo "Use '$0 help' for detailed usage information"
         exit 1
         ;;
