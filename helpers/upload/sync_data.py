@@ -98,8 +98,9 @@ class SimpleUploader:
         try:
             cmd = [
                 "ssh", "-i", str(self.private_key), "-p", str(self.ssh_port),
-                "-o", "ConnectTimeout=10", "-o", "StrictHostKeyChecking=no",
+                "-o", "ConnectTimeout=10", "-o", "StrictHostKeyChecking=accept-new",
                 "-o", "UserKnownHostsFile=/dev/null", "-o", "PasswordAuthentication=no",
+                "-o", "LogLevel=ERROR",  # Suppress warnings
                 f"{self.remote_user}@{self.remote_host}", "echo 'OK'"
             ]
             result = subprocess.run(cmd, capture_output=True, text=True, timeout=15)
@@ -181,7 +182,8 @@ class SimpleUploader:
         try:
             cmd = [
                 "ssh", "-i", str(self.private_key), "-p", str(self.ssh_port),
-                "-o", "StrictHostKeyChecking=no", "-o", "UserKnownHostsFile=/dev/null",
+                "-o", "StrictHostKeyChecking=accept-new", "-o", "UserKnownHostsFile=/dev/null",
+                "-o", "LogLevel=ERROR",  # Suppress warnings
                 f"{self.remote_user}@{self.remote_host}", script
             ]
             
@@ -215,7 +217,8 @@ class SimpleUploader:
             remote_dir = f"{self.remote_user}@{self.remote_host}:{self.remote_dir}/{Path(remote_rel_path).parent}"
             mkdir_cmd = [
                 "ssh", "-i", str(self.private_key), "-p", str(self.ssh_port),
-                "-o", "StrictHostKeyChecking=no", "-o", "UserKnownHostsFile=/dev/null",
+                "-o", "StrictHostKeyChecking=accept-new", "-o", "UserKnownHostsFile=/dev/null",
+                "-o", "LogLevel=ERROR",  # Suppress warnings
                 f"{self.remote_user}@{self.remote_host}",
                 f"mkdir -p '{self.remote_dir}/{Path(remote_rel_path).parent}'"
             ]
@@ -225,7 +228,8 @@ class SimpleUploader:
             remote_path = f"{self.remote_user}@{self.remote_host}:{self.remote_dir}/{remote_rel_path}"
             scp_cmd = [
                 "scp", "-i", str(self.private_key), "-P", str(self.ssh_port),
-                "-o", "StrictHostKeyChecking=no", "-o", "UserKnownHostsFile=/dev/null",
+                "-o", "StrictHostKeyChecking=accept-new", "-o", "UserKnownHostsFile=/dev/null",
+                "-o", "LogLevel=ERROR",  # Suppress warnings
                 str(local_path), remote_path
             ]
             
