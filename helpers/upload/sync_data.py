@@ -187,7 +187,10 @@ class SimpleUploader:
             
             result = subprocess.run(cmd, capture_output=True, text=True, timeout=300)
             if result.returncode != 0:
-                logger.error("Failed to get remote files")
+                logger.error(f"Failed to get remote files: {result.stderr}")
+                logger.error(f"SSH command output: {result.stdout}")
+                logger.info("This might mean the remote directory doesn't exist yet, or there's a connection issue.")
+                logger.info("All local files will be uploaded on first run.")
                 return {}
             
             manifest = {}
@@ -266,18 +269,22 @@ class SimpleUploader:
         
         # Find files to upload
         files_to_upload = []
-        for rel_path, local_info in local_files.items():
-            if rel_path not in remote_files:
-                files_to_upload.append(rel_path)
-                self.stats['uploaded'] += 1
-            else:
-                remote_info = remote_files[rel_path]
-                if (local_info['size'] != remote_info['size'] or 
-                    local_info['hash'] != remote_info['hash']):
+        if not remote_files:
+            logger.info("No remote files found - this appears to be the first upload")
+            logger.info("All local files will be uploaded")
+            files_to_upload = list(local_files.keys())
+            # Don't set stats['uploaded'] here - it will be set in the summary
+        else:
+            for rel_path, local_info in local_files.items():
+                if rel_path not in remote_files:
                     files_to_upload.append(rel_path)
-                    self.stats['uploaded'] += 1
                 else:
-                    self.stats['skipped'] += 1
+                    remote_info = remote_files[rel_path]
+                    if (local_info['size'] != remote_info['size'] or 
+                        local_info['hash'] != remote_info['hash']):
+                        files_to_upload.append(rel_path)
+                    else:
+                        self.stats['skipped'] += 1
         
         # Print summary
         logger.info(f"Files scanned: {self.stats['scanned']}")
@@ -361,13 +368,13 @@ Examples:
     
     logger.info(f"Workspace root: {workspace_root}")
     logger.info(f"Local data directory: {local_data_dir}")
-    logger.info(f"Remote directory: /data/epstein-browser")
+    logger.info(f"Remote directory: /data")
     
     uploader = SimpleUploader(
         local_dir=str(local_data_dir),
         remote_host=args.host,
         remote_user=args.user,
-        remote_dir="/data/epstein-browser",  # Fixed remote directory
+        remote_dir="/data",  # Just /data/ in workspace root
         ssh_port=args.port
     )
     
