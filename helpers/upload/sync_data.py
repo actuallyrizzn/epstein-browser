@@ -337,15 +337,13 @@ Examples:
   # Full sync
   python sync_data.py --host server.com --user username
 
-  # Custom directories
-  python sync_data.py --host server.com --user username --local-dir ./data --remote-dir /var/data
+  # With custom SSH port
+  python sync_data.py --host server.com --user username --port 2222
         """
     )
     
     parser.add_argument('--host', required=True, help='Remote server hostname/IP')
     parser.add_argument('--user', required=True, help='Remote server username')
-    parser.add_argument('--local-dir', default='../../data', help='Local data directory')
-    parser.add_argument('--remote-dir', default='/data/epstein-browser', help='Remote data directory')
     parser.add_argument('--port', type=int, default=22, help='SSH port')
     parser.add_argument('--setup', action='store_true', help='Setup SSH keys and test connection')
     parser.add_argument('--dry-run', action='store_true', help='Show what would be uploaded without uploading')
@@ -356,11 +354,20 @@ Examples:
     if args.verbose:
         logging.getLogger().setLevel(logging.DEBUG)
     
+    # Automatically detect workspace root (go up from helpers/upload/ to project root)
+    script_dir = Path(__file__).parent
+    workspace_root = script_dir.parent.parent  # helpers/upload/ -> helpers/ -> project_root
+    local_data_dir = workspace_root / "data"
+    
+    logger.info(f"Workspace root: {workspace_root}")
+    logger.info(f"Local data directory: {local_data_dir}")
+    logger.info(f"Remote directory: /data/epstein-browser")
+    
     uploader = SimpleUploader(
-        local_dir=args.local_dir,
+        local_dir=str(local_data_dir),
         remote_host=args.host,
         remote_user=args.user,
-        remote_dir=args.remote_dir,
+        remote_dir="/data/epstein-browser",  # Fixed remote directory
         ssh_port=args.port
     )
     
