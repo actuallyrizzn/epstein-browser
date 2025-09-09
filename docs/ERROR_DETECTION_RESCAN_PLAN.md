@@ -8,9 +8,17 @@
 
 This document outlines the implementation plan for the Error Detection & Rescan Pass feature, which automatically identifies low-quality OCR pages and reprocesses them with smarter preprocessing and engine choices.
 
-## Critical Implementation Note
+## Critical Implementation Requirements
 
-**⚠️ IMPORTANT**: If we hit a 429 error indicating a DAILY limit hit, the script should exit gracefully and NOT perform any retries. This prevents unnecessary API calls and respects rate limits.
+**⚠️ IMPORTANT**: 
+1. **Daily Limit Handling**: If we hit a 429 error indicating a DAILY limit hit, the script should exit gracefully and NOT perform any retries. This prevents unnecessary API calls and respects rate limits.
+
+2. **Idempotency**: The entire Error Detection & Rescan Pass system MUST be idempotent. This means:
+   - Safe to re-run without side effects
+   - No duplicate processing of already-processed pages
+   - State tracking prevents re-processing successful rescans
+   - Atomic operations for all database writes
+   - Graceful handling of interrupted processes
 
 ## Error Detection & Rescan Pass 🔍
 
@@ -81,12 +89,18 @@ We have a working stub that successfully identifies and re-processes bad OCR fil
 **Quality Score**: Weighted blend → `Q ∈ [0,100]`. Below `Q_fail` routes to rescan; between `Q_warn` and `Q_fail` queues lower-priority retry.
 *Defaults*: `Q_fail=35`, `Q_warn=55`, tunable per volume
 
-### Rescan Strategy (Progressive)
+### Rescan Strategy (Progressive & Idempotent)
 1. **Preprocessing variants** (fast): grayscale → Otsu binarize → adaptive threshold
 2. **Orientation sweep**: Try rotations: 90, 180, 270 if non-Latin ratios dominate
 3. **Alternate OCR engine (A/B)**: Keep EasyOCR as A; try Tesseract lstm with legal-trained language pack
 4. **Last-chance composite**: Split page into bands/columns, OCR per region, reassemble
 5. **Fail-out**: Mark `needs_manual_review=true` after N attempts (default 3)
+
+**Idempotency Guarantees**:
+- Check `attempts` and `last_attempt_at` before processing
+- Skip if newer success exists
+- Atomic file operations: `data/ocr/<volume>/<id>.txt.tmp` → rename to `.txt` on success
+- Database state tracking prevents duplicate work
 
 ### Data Model
 ```sql
@@ -113,12 +127,18 @@ OCR_UPSCALE_DPI=450
 OCR_QUEUE_PARALLELISM=4
 ```
 
-### Rollout Order (Safe & Incremental)
+### Rollout Order (Safe, Incremental & Idempotent)
 1. Ship detectors → **score only** (no rescan), watch dashboard 24h
-2. Enable rescans for `Q < Q_fail` (small concurrency)
+2. Enable rescans for `Q < Q_fail` (small concurrency) with idempotency checks
 3. Turn on orientation/deskew branch; then alt engine A/B
 4. Tune thresholds; increase concurrency
 5. Hand off persistent failures to **LLM correction** phase
+
+**Idempotency Testing**:
+- Verify safe re-runs don't duplicate work
+- Test interrupted process recovery
+- Validate atomic file operations
+- Confirm database state consistency
 
 ## Next Steps
 
