@@ -10,6 +10,44 @@
 {% block twitter_title %}{{ post.title }} - {{ super() }}{% endblock %}
 {% block twitter_description %}{{ post.excerpt }}{% endblock %}
 
+{% block og_type %}article{% endblock %}
+{% block og_updated_time %}{{ post.date }}T00:00:00Z{% endblock %}
+
+{% block extra_head %}
+<!-- Article Structured Data -->
+<script type="application/ld+json">
+{
+    "@context": "https://schema.org",
+    "@type": "Article",
+    "headline": "{{ post.title }}",
+    "description": "{{ post.excerpt }}",
+    "author": {
+        "@type": "Person",
+        "name": "{{ post.author }}",
+        "url": "https://rizzn.net"
+    },
+    "publisher": {
+        "@type": "Organization",
+        "name": "Epstein Documents Browser",
+        "url": "{{ request.url_root }}",
+        "logo": {
+            "@type": "ImageObject",
+            "url": "{{ url_for('static', filename='og-image.png', _external=True) }}"
+        }
+    },
+    "datePublished": "{{ post.date }}T00:00:00Z",
+    "dateModified": "{{ post.date }}T00:00:00Z",
+    "mainEntityOfPage": {
+        "@type": "WebPage",
+        "@id": "{{ request.url }}"
+    },
+    "keywords": "{{ post.tags | join(', ') }}",
+    "articleSection": "Technology",
+    "wordCount": "{{ post.content | length }}"
+}
+</script>
+{% endblock %}
+
 {% block content %}
 <div class="container mt-4">
     <div class="row">

@@ -12,6 +12,30 @@
 
 {% block twitter_description %}Complete documentation and help guide for the Epstein Documents Browser. Learn how to browse congressional records, use OCR features, and understand the open source project.{% endblock %}
 
+{% block extra_head %}
+<!-- Breadcrumb Structured Data -->
+<script type="application/ld+json">
+{
+    "@context": "https://schema.org",
+    "@type": "BreadcrumbList",
+    "itemListElement": [
+        {
+            "@type": "ListItem",
+            "position": 1,
+            "name": "Home",
+            "item": "{{ request.url_root }}"
+        },
+        {
+            "@type": "ListItem",
+            "position": 2,
+            "name": "Help & Documentation",
+            "item": "{{ request.url }}"
+        }
+    ]
+}
+</script>
+{% endblock %}
+
 {% block content %}
 <div class="row">
     <div class="col-lg-8">
