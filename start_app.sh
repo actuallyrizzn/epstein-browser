@@ -33,16 +33,41 @@ print_error() {
     echo -e "${RED}[$(date '+%Y-%m-%d %H:%M:%S')]${NC} $1"
 }
 
-# Function to check if screen session exists
+# Function to check if screen session exists (live only)
 screen_exists() {
+    screen -list | grep -q "$SCREEN_NAME.*(Detached\|Attached)"
+}
+
+# Function to check if screen session exists (including dead)
+screen_exists_any() {
     screen -list | grep -q "$SCREEN_NAME"
+}
+
+# Function to check if screen session is dead
+screen_is_dead() {
+    screen -list | grep -q "$SCREEN_NAME.*(Dead"
+}
+
+# Function to clean up dead screen sessions
+cleanup_dead_screens() {
+    if screen_is_dead; then
+        print_warning "Found dead screen session, cleaning up..."
+        screen -wipe > /dev/null 2>&1
+        # Also try to kill any remaining dead sessions
+        screen -list | grep "$SCREEN_NAME.*(Dead" | awk '{print $1}' | cut -d. -f1 | xargs -r kill -9 2>/dev/null
+        sleep 1
+    fi
 }
 
 # Function to check if app is running in screen
 app_running() {
     if screen_exists; then
+        # Try to send a command to check if the session is responsive
         screen -S "$SCREEN_NAME" -X stuff "echo 'App check'\n" > /dev/null 2>&1
-        return $?
+        # Also check if the Python process is actually running
+        if pgrep -f "python.*app.py" > /dev/null; then
+            return 0
+        fi
     fi
     return 1
 }
@@ -69,7 +94,10 @@ start_app() {
         exit 1
     fi
     
-    # Kill existing screen session if it exists
+    # Clean up any dead screen sessions first
+    cleanup_dead_screens
+    
+    # Kill existing live screen session if it exists
     if screen_exists; then
         print_warning "Killing existing screen session..."
         screen -S "$SCREEN_NAME" -X quit
@@ -117,6 +145,9 @@ restart_app() {
 
 # Function to start app only if not already running
 start_if_missing() {
+    # Clean up any dead screen sessions first
+    cleanup_dead_screens
+    
     if screen_exists && app_running; then
         print_status "$APP_NAME is already running in screen session: $SCREEN_NAME"
         return 0
@@ -162,6 +193,13 @@ show_logs() {
     fi
 }
 
+# Function to clean up dead sessions
+cleanup() {
+    print_status "Cleaning up dead screen sessions..."
+    cleanup_dead_screens
+    print_success "Cleanup complete"
+}
+
 # Main script logic
 case "$1" in
     start)
@@ -182,8 +220,11 @@ case "$1" in
     logs)
         show_logs
         ;;
+    cleanup)
+        cleanup
+        ;;
     *)
-        echo "Usage: $0 {start|start-if-missing|stop|restart|status|logs}"
+        echo "Usage: $0 {start|start-if-missing|stop|restart|status|logs|cleanup}"
         echo ""
         echo "Commands:"
         echo "  start            - Start the application in a screen session"
@@ -192,6 +233,7 @@ case "$1" in
         echo "  restart          - Restart the application"
         echo "  status           - Show application status"
         echo "  logs             - View application logs in screen session"
+        echo "  cleanup          - Clean up dead screen sessions"
         exit 1
         ;;
 esac
