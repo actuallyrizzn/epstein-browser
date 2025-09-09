@@ -76,63 +76,86 @@ We have a working stub that successfully identifies and re-processes bad OCR fil
 * **Input:** page record (`images.id`), raw OCR text (if present), source image path
 * **Output:** corrected OCR text (or failure), quality score, reason codes, audit trail, and rescan status
 
-### Detection Signals (Scored & Combined)
-1. **Text length outliers**: `len(raw_text) < 20` and adjacent pages average `>200` chars → suspect
-2. **Character diversity**: Ratio of unique alphanumerics to total chars; flag if `< 0.08`
-3. **Garbage pattern detectors**: Regex bank for "0 0 00 0", `^O{10,}$`, `^[0\s\W]{N,}$`, repeated trigram runs
-4. **Word dictionary hit-rate**: `% of tokens in legal/general vocab` (wordfreq + legal terms). Flag if `< 35%`
-5. **Visual blankness/noise**: Downscale to 64×64; compute mean pixel variance + entropy
-6. **Orientation/skew suspicion**: Hough-based skew > |3°| → mark for deskew branch
-7. **Adjacency similarity**: Cosine sim (minhash/char n-grams) to previous/next page
-8. **Engine confidence**: Use engine-reported confidences when present
+### Detection Signals (Simplified)
+**Current Working Implementation**:
+1. **Text length check**: `len(raw_text) < 10` characters → flag for rescan
+2. **Zero pattern detection**: Content that's just repeated zeros with spaces → flag for rescan  
+3. **All zeros check**: Content that's all zeros when stripped of whitespace → flag for rescan
+4. **Venice AI quality check**: Use existing Venice SDK to detect catastrophic OCR failures
 
-**Quality Score**: Weighted blend → `Q ∈ [0,100]`. Below `Q_fail` routes to rescan; between `Q_warn` and `Q_fail` queues lower-priority retry.
-*Defaults*: `Q_fail=35`, `Q_warn=55`, tunable per volume
+**Venice AI Quality Check** (using existing `helpers/venice_sdk/`):
+```python
+from helpers.venice_sdk import chat_complete, load_config
 
-### Rescan Strategy (Progressive & Idempotent)
-1. **Preprocessing variants** (fast): grayscale → Otsu binarize → adaptive threshold
-2. **Orientation sweep**: Try rotations: 90, 180, 270 if non-Latin ratios dominate
-3. **Alternate OCR engine (A/B)**: Keep EasyOCR as A; try Tesseract lstm with legal-trained language pack
-4. **Last-chance composite**: Split page into bands/columns, OCR per region, reassemble
-5. **Fail-out**: Mark `needs_manual_review=true` after N attempts (default 3)
+def check_ocr_quality_with_venice(raw_text: str) -> int:
+    """Use Venice AI to check if OCR represents catastrophic failure"""
+    try:
+        config = load_config()
+        messages = [
+            {"role": "system", "content": "You are an expert at detecting catastrophic OCR failures in legal documents. Analyze this OCR text and determine if it represents a complete failure of OCR processing. CATASTROPHIC FAILURE INDICATORS: Text is mostly or entirely garbled characters, repeated patterns that make no sense (like '0 0 00 0' or '### ###'), text that appears to be random characters or symbols, content that is clearly not English words or legal text, text that looks like it came from a corrupted or unreadable image. GOOD OCR INDICATORS: Contains recognizable English words, has proper legal terminology, contains dates, names, or document references, has readable sentence structure (even with minor OCR errors). Respond with ONLY: 'CATASTROPHIC_FAILURE' if the OCR is completely unusable, 'ACCEPTABLE' if the OCR is readable despite minor errors. Do not provide explanations or corrections, just the classification."},
+            {"role": "user", "content": f"Check this OCR text for catastrophic failure:\n\n{raw_text}"}
+        ]
+        
+        response = chat_complete(messages, model="llama-3.3-70b", temperature=0.1)
+        classification = response["choices"][0]["message"]["content"].strip().upper()
+        
+        if "CATASTROPHIC_FAILURE" in classification:
+            return 0  # Bad OCR
+        elif "ACCEPTABLE" in classification:
+            return 100  # Good OCR
+        else:
+            return 0  # Default to bad on unclear response
+            
+    except Exception as e:
+        logger.error(f"Venice AI quality check failed: {e}")
+        return 0  # Default to bad on error
+```
+
+**Quality Score**: Simple 0/100 scoring:
+- `100` = Good OCR (passed all checks + Venice says "ACCEPTABLE")
+- `0` = Bad OCR (failed basic checks OR Venice says "CATASTROPHIC_FAILURE")
+- `NULL` = Not checked yet
+
+**Rescan Logic**: 
+- If `ocr_rescan_attempts < 3` and `ocr_quality_score = 0` → rescan
+- If `ocr_rescan_attempts >= 3` → give up, mark as failed
+
+### Rescan Strategy (Simplified)
+1. **Re-run tesseract with better settings**: `--psm 3` (automatic page segmentation)
+2. **Validate new results**: Check if new OCR text is longer and not all zeros
+3. **Fail-out**: After 3 attempts, give up and mark as failed
 
 **Idempotency Guarantees**:
-- Check `attempts` and `last_attempt_at` before processing
-- Skip if newer success exists
+- Check `ocr_rescan_attempts` before processing
+- Skip if `ocr_rescan_attempts >= 3`
 - Atomic file operations: `data/ocr/<volume>/<id>.txt.tmp` → rename to `.txt` on success
-- Database state tracking prevents duplicate work
+- Update `ocr_rescan_attempts` counter after each attempt
 
 ### Data Model
+**Simplified Approach**: Add fields to existing `images` table instead of creating a separate table.
+
 ```sql
-CREATE TABLE ocr_quality (
-  page_id INTEGER PRIMARY KEY,
-  q_score INTEGER NOT NULL,            -- 0..100
-  reason_codes TEXT NOT NULL,          -- e.g. "LEN,CHAR_DIV,DICT"
-  engine_id TEXT,                      -- "easyocr|tesseract"
-  attempts INTEGER DEFAULT 0,
-  last_attempt_at DATETIME,
-  needs_manual_review BOOLEAN DEFAULT 0,
-  corrected BOOLEAN DEFAULT 0,         -- downstream LLM pass can set true
-  FOREIGN KEY(page_id) REFERENCES images(id)
-);
+-- Add these fields to the existing images table
+ALTER TABLE images ADD COLUMN ocr_quality_score INTEGER DEFAULT NULL;  -- 0-100, NULL = not checked yet
+ALTER TABLE images ADD COLUMN ocr_rescan_attempts INTEGER DEFAULT 0;   -- for idempotency (max 3)
 ```
+
+**Database Migration Required**:
+- Update `init_database()` functions in `app.py` and `index_images.py` to include these fields
+- Add migration logic to check for existing fields and add them if missing
+- Existing installations will need the scan tool to add these fields automatically
 
 ### Configuration (Environment Variables)
 ```
-Q_FAIL=35
-Q_WARN=55
 OCR_MAX_ATTEMPTS=3
-OCR_ALT_ENGINE_ENABLED=true
-OCR_UPSCALE_DPI=450
 OCR_QUEUE_PARALLELISM=4
 ```
 
 ### Rollout Order (Safe, Incremental & Idempotent)
-1. Ship detectors → **score only** (no rescan), watch dashboard 24h
-2. Enable rescans for `Q < Q_fail` (small concurrency) with idempotency checks
-3. Turn on orientation/deskew branch; then alt engine A/B
-4. Tune thresholds; increase concurrency
-5. Hand off persistent failures to **LLM correction** phase
+1. **Add database fields** to existing `images` table
+2. **Run quality detection** on all existing OCR files (score only, no rescan)
+3. **Enable rescan processing** for files with `ocr_quality_score = 0`
+4. **Monitor progress** and tune concurrency as needed
 
 **Idempotency Testing**:
 - Verify safe re-runs don't duplicate work
@@ -142,10 +165,10 @@ OCR_QUEUE_PARALLELISM=4
 
 ## Next Steps
 
-1. **Phase 1**: Implement detection signals and quality scoring
-2. **Phase 2**: Build rescan pipeline with preprocessing variants
-3. **Phase 3**: Add alternate OCR engine support
-4. **Phase 4**: Implement admin dashboard metrics
+1. **Phase 1**: Add database fields to `images` table
+2. **Phase 2**: Implement simple quality detection (length + zero checks)
+3. **Phase 3**: Build rescan pipeline with tesseract `--psm 3`
+4. **Phase 4**: Add migration logic for existing installations
 5. **Phase 5**: Deploy with safe rollout strategy
 
 ---
