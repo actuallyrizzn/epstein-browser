@@ -1110,7 +1110,7 @@ def blog_post(slug):
         abort(404)
     
     # Process Markdown content
-    md = markdown.Markdown(extensions=['codehilite', 'fenced_code', 'tables'])
+    md = markdown.Markdown(extensions=['codehilite', 'fenced_code', 'tables', 'toc', 'nl2br'])
     post['html_content'] = md.convert(post['content'])
     
     return render_template('blog_post.html', post=post)
