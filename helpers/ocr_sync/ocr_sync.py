@@ -33,7 +33,7 @@ from pathlib import Path
 from typing import List, Dict, Optional, Tuple
 from urllib.parse import urljoin, urlparse
 import logging
-from datetime import datetime
+from datetime import datetime, timedelta
 
 # Add project root to path for imports
 project_root = Path(__file__).parent.parent
@@ -101,12 +101,16 @@ class OCRSync:
         self.session.allow_redirects = True
         
         # Rate limiting - be respectful to the server
-        self.request_delay = 0.1  # 100ms between requests
+        # /api/document/{id} uses 'stats' rate limit: 300 requests per 60 seconds = 5 requests per second
+        # We'll be conservative and use 200ms between requests (5 requests per second)
+        self.request_delay = 0.2  # 200ms between requests (5 per second)
         self.batch_delay = 1.0    # 1 second between batches
         
-        # Progress tracking and cache files
-        self.progress_file = self.local_data_dir / '.ocr_sync_progress.json'
-        self.cache_file = self.local_data_dir / '.ocr_sync_cache.json'
+        # Progress tracking and cache files (in .cache subdirectory)
+        cache_dir = Path(__file__).parent / '.cache'
+        cache_dir.mkdir(exist_ok=True)
+        self.progress_file = cache_dir / '.ocr_sync_progress.json'
+        self.cache_file = cache_dir / '.ocr_sync_cache.json'
         
         logger.info(f"Initialized OCR sync:")
         logger.info(f"  Production URL: {self.prod_url}")
@@ -271,21 +275,43 @@ class OCRSync:
         Returns:
             Document dictionary or None if not found
         """
-        try:
-            url = f"{self.prod_url}/api/document/{doc_id}"
-            response = self.session.get(url)
-            
-            if response.status_code == 200:
-                return response.json()
-            elif response.status_code == 404:
-                return None
-            else:
-                logger.warning(f"Unexpected status code {response.status_code} for document {doc_id}")
-                return None
+        max_retries = 3
+        base_delay = 1.0
+        
+        for attempt in range(max_retries):
+            try:
+                url = f"{self.prod_url}/api/document/{doc_id}"
+                response = self.session.get(url)
                 
-        except requests.RequestException as e:
-            logger.warning(f"Failed to fetch document {doc_id}: {e}")
-            return None
+                # Check for rate limiting
+                if response.status_code == 429:
+                    retry_after = int(response.headers.get('Retry-After', 60))
+                    logger.warning(f"Rate limited for document {doc_id}. Waiting {retry_after} seconds...")
+                    time.sleep(retry_after)
+                    continue
+                
+                if response.status_code == 200:
+                    # Check rate limit headers and adjust delay if needed
+                    remaining = response.headers.get('X-RateLimit-Remaining')
+                    if remaining and int(remaining) < 10:  # If less than 10 requests remaining
+                        logger.debug(f"Rate limit remaining: {remaining}. Adding extra delay...")
+                        time.sleep(1.0)  # Extra 1 second delay
+                    
+                    return response.json()
+                elif response.status_code == 404:
+                    return None
+                else:
+                    logger.warning(f"Unexpected status code {response.status_code} for document {doc_id}")
+                    return None
+                    
+            except requests.RequestException as e:
+                if attempt < max_retries - 1:
+                    delay = base_delay * (2 ** attempt)  # Exponential backoff
+                    logger.warning(f"Failed to fetch document {doc_id} (attempt {attempt + 1}): {e}. Retrying in {delay}s...")
+                    time.sleep(delay)
+                else:
+                    logger.warning(f"Failed to fetch document {doc_id} after {max_retries} attempts: {e}")
+                    return None
     
     def get_document_range(self, start_id: int, end_id: int) -> List[Dict]:
         """
@@ -301,15 +327,13 @@ class OCRSync:
         documents = []
         
         for doc_id in range(start_id, end_id + 1):
-            # Check limited run BEFORE making API calls
-            if self.limited_run and len(documents) >= self.limited_run:
-                logger.info(f"Reached limited run limit of {self.limited_run} documents")
-                break
-                
             document = self.get_document_by_id(doc_id)
             if document and document.get('has_ocr_text', False):
                 documents.append(document)
                 logger.debug(f"Found document {doc_id} with OCR text")
+                
+                # Check if this document exists in local database and update if needed
+                self.check_and_update_database_entry(doc_id, document)
             
             # Rate limiting - be respectful to the server
             time.sleep(self.request_delay)
@@ -424,6 +448,97 @@ class OCRSync:
             logger.error(f"Failed to save OCR text for {file_path}: {e}")
             return False
     
+    def check_and_update_database_entry(self, doc_id: int, document: Dict) -> bool:
+        """
+        Check if document exists in database and update OCR status if needed
+        
+        Args:
+            doc_id: Document ID
+            document: Document dictionary from production API
+            
+        Returns:
+            True if document exists and was updated, False if document doesn't exist
+        """
+        try:
+            if self.dry_run:
+                logger.debug(f"[DRY RUN] Would check database for document {doc_id}")
+                return True
+            
+            # Connect to local database
+            db_path = self.local_data_dir.parent / 'images.db'
+            conn = sqlite3.connect(str(db_path))
+            cursor = conn.cursor()
+            
+            # Check if document exists in database
+            cursor.execute("SELECT id, has_ocr_text, file_path FROM images WHERE id = ?", (doc_id,))
+            result = cursor.fetchone()
+            
+            if result:
+                db_id, has_ocr_text, file_path = result
+                
+                # Check if OCR text exists locally
+                if file_path and self.has_local_ocr_text(file_path):
+                    # Update database to mark as having OCR text
+                    ocr_text_path = str(self.get_local_ocr_path(file_path).relative_to(self.local_data_dir))
+                    cursor.execute("""
+                        UPDATE images 
+                        SET has_ocr_text = ?, ocr_text_path = ?, updated_at = CURRENT_TIMESTAMP
+                        WHERE id = ?
+                    """, (True, ocr_text_path, doc_id))
+                    
+                    conn.commit()
+                    logger.debug(f"Updated database for document {doc_id}: marked as having OCR text")
+                else:
+                    logger.debug(f"Document {doc_id} exists in database but no local OCR file found")
+            else:
+                logger.debug(f"Document {doc_id} not found in local database")
+            
+            conn.close()
+            return result is not None
+            
+        except Exception as e:
+            logger.error(f"Failed to check database for document {doc_id}: {e}")
+            return False
+
+    def update_database(self, doc_id: int, has_ocr: bool, ocr_text_path: str = None) -> bool:
+        """
+        Update database to mark document as having OCR text
+        
+        Args:
+            doc_id: Document ID
+            has_ocr: Whether the document has OCR text
+            ocr_text_path: Path to OCR text file (relative to data directory)
+            
+        Returns:
+            True if successful, False otherwise
+        """
+        try:
+            if self.dry_run:
+                logger.info(f"[DRY RUN] Would update database: doc_id={doc_id}, has_ocr={has_ocr}, ocr_path={ocr_text_path}")
+                return True
+            
+            # Connect to local database
+            db_path = self.local_data_dir.parent / 'images.db'
+            conn = sqlite3.connect(str(db_path))
+            cursor = conn.cursor()
+            
+            # Update the images table
+            cursor.execute("""
+                UPDATE images 
+                SET has_ocr_text = ?, ocr_text_path = ?, updated_at = CURRENT_TIMESTAMP
+                WHERE id = ?
+            """, (has_ocr, ocr_text_path, doc_id))
+            
+            conn.commit()
+            conn.close()
+            
+            logger.debug(f"Updated database for document {doc_id}: has_ocr={has_ocr}")
+            return True
+            
+        except Exception as e:
+            logger.error(f"Failed to update database for document {doc_id}: {e}")
+            return False
+    
     def process_document(self, document: Dict) -> bool:
         """
         Process a single document (download and save OCR text)
@@ -459,8 +574,15 @@ class OCRSync:
         
         # Save OCR text locally
         if self.save_ocr_text(file_path, ocr_text):
-            self.stats['downloaded'] += 1
-            return True
+            # Update database to mark document as having OCR text
+            ocr_text_path = str(self.get_local_ocr_path(file_path).relative_to(self.local_data_dir))
+            if self.update_database(doc_id, True, ocr_text_path):
+                self.stats['downloaded'] += 1
+                return True
+            else:
+                logger.warning(f"Failed to update database for document {doc_id}")
+                self.stats['failed'] += 1
+                return False
         else:
             self.stats['failed'] += 1
             return False
@@ -484,10 +606,93 @@ class OCRSync:
                 logger.error(f"Error processing document {document.get('id', 'unknown')}: {e}")
                 self.stats['failed'] += 1
     
+    def sync_existing_ocr_files(self) -> None:
+        """
+        Scan existing OCR files and update database to match
+        This ensures database is in sync with what's actually on disk
+        """
+        logger.info("Syncing existing OCR files with database...")
+        
+        # Connect to local database
+        db_path = self.local_data_dir.parent / 'images.db'
+        conn = sqlite3.connect(str(db_path))
+        cursor = conn.cursor()
+        
+        # Get all images from database
+        cursor.execute("SELECT id, file_path FROM images")
+        # Normalize paths to use forward slashes for consistent matching
+        db_images = {row[1].replace('\\', '/'): row[0] for row in cursor.fetchall()}
+        
+        # Debug: show some sample database paths
+        sample_paths = list(db_images.keys())[:5]
+        logger.debug(f"Sample database paths: {sample_paths}")
+        
+        # Scan all OCR files
+        ocr_files = list(self.local_data_dir.rglob('*.txt'))
+        updated_count = 0
+        missing_count = 0
+        
+        for ocr_file in ocr_files:
+            if not ocr_file.is_file():
+                continue
+                
+            try:
+                # Get relative path from data directory
+                rel_path = str(ocr_file.relative_to(self.local_data_dir)).replace('\\', '/')
+                
+                # Convert back to original file path (remove .txt extension and add .jpg)
+                original_path = rel_path.rsplit('.', 1)[0] + '.jpg'
+                
+                # Debug: show some sample OCR file paths
+                if missing_count < 5:
+                    logger.debug(f"Sample OCR file path: {original_path}")
+                    # Check if this specific path exists in database
+                    if original_path in db_images:
+                        logger.debug(f"  -> Found in database as ID {db_images[original_path]}")
+                    else:
+                        logger.debug(f"  -> NOT found in database")
+                        # Show a few similar database paths for comparison
+                        similar_paths = [p for p in db_images.keys() if 'DOJ-OGR-00000699' in p]
+                        logger.debug(f"  -> Similar database paths: {similar_paths}")
+                
+                # Check if this file exists in database
+                if original_path in db_images:
+                    doc_id = db_images[original_path]
+                    
+                    # Check if database already has this marked as having OCR
+                    cursor.execute("SELECT has_ocr_text FROM images WHERE id = ?", (doc_id,))
+                    result = cursor.fetchone()
+                    
+                    if result and not result[0]:  # Not marked as having OCR
+                        # Update database
+                        ocr_text_path = rel_path
+                        cursor.execute("""
+                            UPDATE images 
+                            SET has_ocr_text = ?, ocr_text_path = ?, updated_at = CURRENT_TIMESTAMP
+                            WHERE id = ?
+                        """, (True, ocr_text_path, doc_id))
+                        conn.commit()
+                        updated_count += 1
+                        logger.info(f"Updated database for existing OCR file: {original_path}")
+                else:
+                    missing_count += 1
+                    logger.debug(f"OCR file exists but no database entry: {original_path}")
+                    
+            except Exception as e:
+                logger.warning(f"Error processing OCR file {ocr_file}: {e}")
+        
+        conn.commit()
+        conn.close()
+        
+        logger.info(f"Database sync complete: {updated_count} files updated, {missing_count} files not in database")
+
     def sync_ocr_texts(self) -> None:
         """Main sync process"""
         logger.info("Starting OCR text synchronization")
         start_time = time.time()
+        
+        # First, sync existing OCR files with database
+        self.sync_existing_ocr_files()
         
         try:
             # Load local OCR file manifest (for idempotency)
@@ -497,7 +702,7 @@ class OCRSync:
             # Try to load from cache first
             cache_data = self.load_cache()
             if cache_data and self.is_cache_valid(cache_data):
-                logger.info("✅ Using cached local OCR file manifest (much faster!)")
+                logger.info("Using cached local OCR file manifest (much faster!)")
                 local_ocr_files = cache_data['local_ocr_files']
                 cache_used = True
             else:
@@ -558,19 +763,29 @@ class OCRSync:
                     
                     if documents_to_process:
                         logger.info(f"Processing {len(documents_to_process)} new documents (skipped {len(documents) - len(documents_to_process)} already downloaded)")
-                        self.process_batch(documents_to_process)
-                        total_processed += len(documents_to_process)
                         
-                        # Update processed docs
+                        # Process documents one by one to respect limited run
                         for doc in documents_to_process:
+                            # Check limit BEFORE processing
+                            if self.limited_run and total_processed >= self.limited_run:
+                                logger.info(f"Reached limited run limit of {self.limited_run} documents")
+                                break
+                                
+                            self.process_document(doc)
+                            total_processed += 1
                             processed_docs.add(str(doc.get('id', '')))
+                            
+                            # Check limit AFTER processing to break immediately
+                            if self.limited_run and total_processed >= self.limited_run:
+                                logger.info(f"Reached limited run limit of {self.limited_run} documents")
+                                break
                     else:
                         logger.info(f"All {len(documents)} documents in this batch already downloaded")
                 
                 # Save progress after each batch
                 self.save_progress(end_id, processed_docs)
                 
-                # Check if we've hit the limited run limit
+                # Check if we've hit the limited run limit (total processed, not per batch)
                 if self.limited_run and total_processed >= self.limited_run:
                     logger.info(f"Reached limited run limit of {self.limited_run} documents")
                     break
