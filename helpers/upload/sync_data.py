@@ -14,6 +14,7 @@ import logging
 from pathlib import Path
 from typing import Dict, List, Tuple, Optional
 import argparse
+from datetime import datetime, timedelta
 
 # Configure logging
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
@@ -34,6 +35,11 @@ class SimpleUploader:
         self.ssh_dir.mkdir(mode=0o700, exist_ok=True)
         self.private_key = self.ssh_dir / "upload_key"
         self.public_key = self.ssh_dir / "upload_key.pub"
+        
+        # Cache paths
+        self.cache_dir = Path(__file__).parent / ".cache"
+        self.cache_dir.mkdir(mode=0o755, exist_ok=True)
+        self.cache_file = self.cache_dir / f"sync_cache_{self.remote_host}_{self.remote_user}.json"
         
         # Exclude these file types
         self.excluded_extensions = {'.mp4', '.MP4', '.avi', '.mov', '.wmv', '.flv', '.mkv', '.tmp', '.log'}
@@ -109,6 +115,89 @@ class SimpleUploader:
             return result.returncode == 0
         except Exception as e:
             logger.error(f"SSH connection error: {e}")
+            return False
+    
+    def load_cache(self) -> Optional[Dict]:
+        """Load cache from disk."""
+        if not self.cache_file.exists():
+            return None
+        
+        try:
+            with open(self.cache_file, 'r') as f:
+                cache_data = json.load(f)
+            
+            # Validate cache structure
+            required_keys = ['local_files', 'remote_files', 'metadata']
+            if not all(key in cache_data for key in required_keys):
+                logger.warning("Cache file is corrupted, ignoring")
+                return None
+            
+            return cache_data
+        except Exception as e:
+            logger.warning(f"Failed to load cache: {e}")
+            return None
+    
+    def save_cache(self, local_files: Dict, remote_files: Dict) -> bool:
+        """Save cache to disk."""
+        try:
+            cache_data = {
+                'metadata': {
+                    'created_at': datetime.now().isoformat(),
+                    'local_dir': str(self.local_dir),
+                    'remote_host': self.remote_host,
+                    'remote_user': self.remote_user,
+                    'remote_dir': self.remote_dir,
+                    'ssh_port': self.ssh_port
+                },
+                'local_files': local_files,
+                'remote_files': remote_files
+            }
+            
+            with open(self.cache_file, 'w') as f:
+                json.dump(cache_data, f, indent=2)
+            
+            logger.info(f"Cache saved to {self.cache_file}")
+            return True
+        except Exception as e:
+            logger.error(f"Failed to save cache: {e}")
+            return False
+    
+    def is_cache_valid(self, cache_data: Dict, max_age_hours: int = 24) -> bool:
+        """Check if cache is still valid."""
+        try:
+            created_at = datetime.fromisoformat(cache_data['metadata']['created_at'])
+            age = datetime.now() - created_at
+            
+            if age > timedelta(hours=max_age_hours):
+                logger.info(f"Cache is {age} old, considered stale")
+                return False
+            
+            # Check if paths match
+            if (cache_data['metadata']['local_dir'] != str(self.local_dir) or
+                cache_data['metadata']['remote_host'] != self.remote_host or
+                cache_data['metadata']['remote_user'] != self.remote_user or
+                cache_data['metadata']['remote_dir'] != self.remote_dir or
+                cache_data['metadata']['ssh_port'] != self.ssh_port):
+                logger.info("Cache paths don't match current configuration")
+                return False
+            
+            return True
+        except Exception as e:
+            logger.warning(f"Failed to validate cache: {e}")
+            return False
+    
+    def clear_cache(self) -> bool:
+        """Clear the cache file."""
+        try:
+            if self.cache_file.exists():
+                self.cache_file.unlink()
+                logger.info("Cache cleared")
+                return True
+            else:
+                logger.info("No cache to clear")
+                return True
+        except Exception as e:
+            logger.error(f"Failed to clear cache: {e}")
             return False
     
     def calculate_hash(self, file_path: Path) -> str:
@@ -216,18 +305,7 @@ class SimpleUploader:
     def upload_file(self, local_path: Path, remote_rel_path: str) -> bool:
         """Upload a single file."""
         try:
-            # Create remote directory
-            remote_dir = f"{self.remote_user}@{self.remote_host}:{self.remote_dir}/{Path(remote_rel_path).parent}"
-            mkdir_cmd = [
-                "ssh", "-i", str(self.private_key), "-p", str(self.ssh_port),
-                "-o", "StrictHostKeyChecking=accept-new", "-o", "UserKnownHostsFile=/dev/null",
-                "-o", "LogLevel=ERROR",  # Suppress warnings
-                f"{self.remote_user}@{self.remote_host}",
-                f"mkdir -p '{self.remote_dir}/{Path(remote_rel_path).parent}'"
-            ]
-            subprocess.run(mkdir_cmd, check=True, capture_output=True)
-            
-            # Upload file
+            # Upload file - SCP handles directory creation automatically
             remote_path = f"{self.remote_user}@{self.remote_host}:{self.remote_dir}/{remote_rel_path}"
             scp_cmd = [
                 "scp", "-i", str(self.private_key), "-P", str(self.ssh_port),
@@ -242,7 +320,7 @@ class SimpleUploader:
             logger.error(f"Upload failed for {remote_rel_path}: {e}")
             return False
     
-    def sync(self, dry_run: bool = False) -> bool:
+    def sync(self, dry_run: bool = False, use_cache: bool = True) -> bool:
         """Main sync function."""
         logger.info("=" * 50)
         logger.info("Epstein Browser Data Sync")
@@ -281,13 +359,34 @@ class SimpleUploader:
         if "NOT_EXISTS" in test_result.stdout:
             logger.warning(f"Remote directory {self.remote_dir} does not exist - this will be a first-time upload")
         
-        # Scan files
-        local_files = self.scan_local_files()
-        if not local_files:
-            logger.error("No local files found")
-            return False
+        # Try to load from cache first
+        local_files = None
+        remote_files = None
+        cache_used = False
         
-        remote_files = self.get_remote_files()
+        if use_cache:
+            logger.info("Checking for cached file manifests...")
+            cache_data = self.load_cache()
+            if cache_data and self.is_cache_valid(cache_data):
+                logger.info("✅ Using cached file manifests (much faster!)")
+                local_files = cache_data['local_files']
+                remote_files = cache_data['remote_files']
+                cache_used = True
+            else:
+                logger.info("Cache not available or invalid, scanning files...")
+        
+        # Scan files if not using cache or cache is invalid
+        if not cache_used:
+            local_files = self.scan_local_files()
+            if not local_files:
+                logger.error("No local files found")
+                return False
+            
+            remote_files = self.get_remote_files()
+            
+            # Save to cache for next time
+            if use_cache:
+                self.save_cache(local_files, remote_files)
         
         # Find files to upload
         files_to_upload = []
@@ -368,11 +467,17 @@ Examples:
   # Setup SSH keys and test connection
   python sync_data.py --setup --host server.com --user username
 
-  # Dry run - see what would be uploaded
+  # Dry run - see what would be uploaded (uses cache if available)
   python sync_data.py --host server.com --user username --dry-run
 
-  # Full sync
+  # Full sync (uses cache if available)
   python sync_data.py --host server.com --user username
+
+  # Force fresh scan (ignore cache)
+  python sync_data.py --host server.com --user username --no-cache
+
+  # Clear cache
+  python sync_data.py --host server.com --user username --clear-cache
 
   # With custom SSH port
   python sync_data.py --host server.com --user username --port 2222
@@ -384,6 +489,8 @@ Examples:
     parser.add_argument('--port', type=int, default=22, help='SSH port')
     parser.add_argument('--setup', action='store_true', help='Setup SSH keys and test connection')
     parser.add_argument('--dry-run', action='store_true', help='Show what would be uploaded without uploading')
+    parser.add_argument('--no-cache', action='store_true', help='Disable cache and force fresh scan')
+    parser.add_argument('--clear-cache', action='store_true', help='Clear the cache and exit')
     parser.add_argument('--verbose', '-v', action='store_true', help='Verbose logging')
     
     args = parser.parse_args()
@@ -408,6 +515,11 @@ Examples:
         ssh_port=args.port
     )
     
+    if args.clear_cache:
+        logger.info("Clearing cache...")
+        uploader.clear_cache()
+        return
+    
     if args.setup:
         logger.info("Setting up SSH keys...")
         if uploader.generate_ssh_key():
@@ -430,7 +542,7 @@ Examples:
                     logger.info(f"Then test with: python sync_data.py --host {args.host} --user {args.user}")
         return
     
-    success = uploader.sync(dry_run=args.dry_run)
+    success = uploader.sync(dry_run=args.dry_run, use_cache=not args.no_cache)
     sys.exit(0 if success else 1)
 
 if __name__ == "__main__":

@@ -57,3 +57,4 @@ ssh-config
 images.db-journal
 helpers/upload/.ssh/upload_key
 helpers/upload/.ssh/upload_key.pub
+helpers/upload/.cache/sync_cache_epstein.rizzn.net_root.json
