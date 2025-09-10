@@ -620,9 +620,9 @@ def index():
     if total_images == 0:
         return render_template('index.html', total_images=0, first_image=None)
     
-    # Get first available image ID
+    # Get first image ID based on filename ordering
     conn = get_db_connection()
-    first_result = conn.execute('SELECT MIN(id) FROM images').fetchone()
+    first_result = conn.execute('SELECT id FROM images ORDER BY file_name LIMIT 1').fetchone()
     conn.close()
     
     if not first_result or not first_result[0]:
@@ -650,22 +650,29 @@ def view_image(image_id):
     
     total_images = get_total_images()
     
-    # Get previous and next image IDs using actual database queries
+    # Get previous and next image IDs using filename-based ordering
     conn = get_db_connection()
     
-    # Get previous image ID (highest ID less than current)
-    prev_result = conn.execute('SELECT id FROM images WHERE id < ? ORDER BY id DESC LIMIT 1', (image_id,)).fetchone()
-    prev_id = prev_result[0] if prev_result else None
+    # Get all images ordered by filename to find the correct sequence
+    all_images = conn.execute('SELECT id, file_name FROM images ORDER BY file_name').fetchall()
     
-    # Get next image ID (lowest ID greater than current)
-    next_result = conn.execute('SELECT id FROM images WHERE id > ? ORDER BY id ASC LIMIT 1', (image_id,)).fetchone()
-    next_id = next_result[0] if next_result else None
+    # Find current image position in the filename-ordered sequence
+    current_position = None
+    for i, (img_id, filename) in enumerate(all_images):
+        if img_id == image_id:
+            current_position = i
+            break
+    
+    if current_position is None:
+        abort(404)
+    
+    # Get previous and next image IDs based on filename ordering
+    prev_id = all_images[current_position - 1][0] if current_position > 0 else None
+    next_id = all_images[current_position + 1][0] if current_position < len(all_images) - 1 else None
     
     # Get first and last image IDs for progress calculation
-    first_result = conn.execute('SELECT MIN(id) FROM images').fetchone()
-    last_result = conn.execute('SELECT MAX(id) FROM images').fetchone()
-    first_id = first_result[0] if first_result else image_id
-    last_id = last_result[0] if last_result else image_id
+    first_id = all_images[0][0] if all_images else image_id
+    last_id = all_images[-1][0] if all_images else image_id
     
     conn.close()
     
@@ -674,9 +681,9 @@ def view_image(image_id):
     if image['has_ocr_text']:
         ocr_text = get_ocr_text(image['file_path'])
     
-    # Calculate progress based on position in the actual ID range
-    if last_id > first_id:
-        progress_percent = ((image_id - first_id) / (last_id - first_id) * 100)
+    # Calculate progress based on position in the filename-ordered sequence
+    if len(all_images) > 1:
+        progress_percent = (current_position / (len(all_images) - 1) * 100)
     else:
         progress_percent = 100.0  # Only one image
     
@@ -823,7 +830,7 @@ def api_search():
     query = request.args.get('q', '').strip()
     search_type = request.args.get('type', 'all')  # all, filename, ocr
     ocr_filter = request.args.get('ocr', 'all')    # all, with-ocr, without-ocr
-    sort_by = request.args.get('sort', 'relevance') # relevance, filename, id
+    sort_by = request.args.get('sort', 'filename') # relevance, filename, id
     
     if not query:
         return jsonify({'results': []})
@@ -1027,15 +1034,18 @@ def api_document(doc_id):
 @rate_limit('stats')
 @handle_db_operations()
 def api_first_image():
-    """Get the first available image ID"""
+    """Get the first and last image IDs based on filename ordering"""
     conn = get_db_connection()
-    first_id = conn.execute('SELECT MIN(id) FROM images').fetchone()[0]
-    last_id = conn.execute('SELECT MAX(id) FROM images').fetchone()[0]
+    
+    # Get first and last images ordered by filename
+    first_result = conn.execute('SELECT id FROM images ORDER BY file_name LIMIT 1').fetchone()
+    last_result = conn.execute('SELECT id FROM images ORDER BY file_name DESC LIMIT 1').fetchone()
+    
     conn.close()
     
     return jsonify({
-        'first_id': first_id,
-        'last_id': last_id
+        'first_id': first_result[0] if first_result else 1,
+        'last_id': last_result[0] if last_result else 1
     })
 
 
