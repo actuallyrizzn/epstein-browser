@@ -4,6 +4,8 @@ Werkzeug>=2.0.0
 python-dotenv>=1.0.0
 markdown>=3.0.0
 pytesseract>=0.3.10
+tiktoken>=0.5.0
+dirtyjson>=1.0.8
 
 # Testing dependencies
 pytest>=8.0.0

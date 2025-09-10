@@ -138,10 +138,12 @@ class EasyOCRProcessor:
         cursor = conn.cursor()
         
         query = """
-            SELECT id, file_path, file_name, file_type 
-            FROM images 
-            WHERE has_ocr_text = FALSE
-            ORDER BY id
+            SELECT i.id, i.file_path, i.file_name, i.file_type 
+            FROM images i
+            LEFT JOIN ocr_reprocessing_queue rq ON i.id = rq.image_id AND rq.status IN ('queued', 'processing')
+            WHERE i.has_ocr_text = FALSE 
+            AND rq.id IS NULL
+            ORDER BY i.id
         """
         
         if limit:

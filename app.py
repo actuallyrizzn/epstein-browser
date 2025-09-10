@@ -678,8 +678,36 @@ def view_image(image_id):
     
     # Get OCR text if available
     ocr_text = None
+    ocr_original_text = None
+    ocr_corrected_text = None
+    correction_confidence = None
+    correction_status = None
+    
     if image['has_ocr_text']:
-        ocr_text = get_ocr_text(image['file_path'])
+        ocr_original_text = get_ocr_text(image['file_path'])
+        
+        # Check for corrected text
+        if image.get('has_corrected_text'):
+            try:
+                from helpers.ocr_quality_assessment import OCRQualityAssessment
+                ocr_assessor = OCRQualityAssessment('images.db')
+                correction = ocr_assessor.get_correction(image_id)
+                
+                if correction:
+                    ocr_corrected_text = correction['corrected_text']
+                    correction_confidence = correction['quality_score']
+                    correction_status = correction['confidence']
+                    # Display corrected text by default
+                    ocr_text = ocr_corrected_text
+                else:
+                    # Fallback to original if correction not found
+                    ocr_text = ocr_original_text
+            except Exception as e:
+                print(f"Error loading correction for image {image_id}: {e}")
+                ocr_text = ocr_original_text
+        else:
+            # No correction available, use original
+            ocr_text = ocr_original_text
     
     # Calculate progress based on position in the filename-ordered sequence
     if len(all_images) > 1:
@@ -694,6 +722,10 @@ def view_image(image_id):
                          prev_id=prev_id,
                          next_id=next_id,
                          ocr_text=ocr_text,
+                         ocr_original_text=ocr_original_text,
+                         ocr_corrected_text=ocr_corrected_text,
+                         correction_confidence=correction_confidence,
+                         correction_status=correction_status,
                          progress_percent=progress_percent)
 
 
