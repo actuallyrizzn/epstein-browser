@@ -11,14 +11,15 @@ This document outlines the implementation plan for the LLM Correction Pass featu
 ## Critical Implementation Requirements
 
 **⚠️ IMPORTANT**: 
-1. **API Rate Limiting**: Respect 429 responses from LLM APIs by exiting the processing loop
+1. **API Rate Limiting**: Respect 429 responses from LLM APIs by exiting the processing loop (no retry/backoff - close the loop)
 2. **Cost Control**: Implement cost monitoring to prevent runaway API costs
 3. **Idempotency**: The entire LLM Correction Pass system MUST be idempotent and safe to re-run
 4. **Side-by-side Storage**: Always preserve original OCR text alongside corrected versions
-5. **Confidence Scoring**: Every correction must have a confidence score for human review
+5. **Quality Assessment**: Every correction must have quality assessment for human review
 6. **Legal Document Optimization**: Specialized prompts and processing for legal document context
 7. **Low-Quality OCR Detection**: Flag pages with nonsense OCR (images, handwriting failures) for high-quality reprocessing
 8. **Database Schema Idempotency**: Both LLM correction script AND main image indexer must idempotently handle table upgrades
+9. **Database Backup**: ALWAYS backup the database file before starting implementation - we will probably break something! 💾
 
 ## LLM Correction Pass 🤖
 
@@ -49,11 +50,13 @@ Use AI to correct and enhance OCR text with contextual understanding, specifical
 - **Helper Module Architecture**: OCR quality assessment system in `helpers/ocr_quality_assessment.py`
 
 ### Implementation Steps
-1. **Phase 1**: Database schema for corrected text storage
-2. **Phase 2**: LLM integration and API management
-3. **Phase 3**: Legal document correction prompts
-4. **Phase 4**: Confidence scoring and review workflows
-5. **Phase 5**: Cost monitoring and optimization
+1. **Phase 1**: Database schema and basic LLM integration
+2. **Phase 2**: Legal document prompts and confidence scoring
+3. **Phase 3**: Low-quality OCR detection and reprocessing queue
+4. **Phase 4**: Human review workflows and cost monitoring
+5. **Phase 5**: Batch processing and optimization
+6. **Phase 6**: UI/UX Integration & Display
+7. **Phase 7**: Full production deployment with monitoring
 
 ## Detailed Specification
 
@@ -303,6 +306,43 @@ def ensure_database_schema(conn):
 - **App startup**: Consider calling schema check on app initialization
 - **Migration safety**: Both scripts can run simultaneously without conflicts
 
+### Database Backup Requirements
+
+**CRITICAL**: Before implementing any LLM correction features, create a backup of the database file.
+
+**Backup Procedure**:
+```bash
+# Create timestamped backup before starting
+cp images.db "images_backup_$(date +%Y%m%d_%H%M%S).db"
+
+# Or create a backup in a backups directory
+mkdir -p backups
+cp images.db "backups/images_backup_$(date +%Y%m%d_%H%M%S).db"
+
+# Verify backup was created
+ls -la images_backup_*.db
+```
+
+**Backup Verification**:
+- Check file size matches original
+- Verify database integrity: `sqlite3 backup.db "PRAGMA integrity_check;"`
+- Test that backup can be opened and queried
+
+**Recovery Plan**:
+If things go wrong during implementation:
+```bash
+# Stop any running processes
+# Restore from backup
+cp images_backup_YYYYMMDD_HHMMSS.db images.db
+# Restart application
+```
+
+**Why This Matters**:
+- Database contains valuable OCR processing work
+- Schema changes can sometimes go sideways
+- Easy rollback if we "figure out a way to fuck shit up" 😅
+- Peace of mind during development and testing
+
 ### Configuration (Environment Variables)
 
 ```bash
@@ -330,9 +370,19 @@ TOKEN_ESTIMATION_BUFFER=0.03  # 3% buffer for token estimation
 USE_DIRTYJSON=true  # Use dirtyjson for robust JSON parsing
 ```
 
+### Dependencies
+
+**New Python packages to add to `requirements.txt`**:
+```
+tiktoken>=0.5.0
+dirtyjson>=1.0.8
+```
+
+**Implementation Note**: Add these dependencies during Phase 1 implementation.
+
 ### Token Counting & Cost Estimation
 
-**Token Calculation Formula**:
+**Token Calculation Formula** (Pseudocode - to be refined in development):
 ```python
 import tiktoken
 
@@ -343,17 +393,22 @@ def calculate_token_estimate(prompt: str, ocr_text: str) -> int:
     Formula: prompt_tokens + (ocr_text_tokens * 2) + 3% buffer
     - OCR text is multiplied by 2 to account for input + output
     - 3% buffer accounts for response overhead and variations
+    - NOTE: Error handling and edge cases to be refined in development
     """
-    encoding = tiktoken.encoding_for_model("gpt-4")
-    
-    prompt_tokens = len(encoding.encode(prompt))
-    ocr_tokens = len(encoding.encode(ocr_text))
-    
-    # Apply formula: prompt + (ocr * 2) + 3% buffer
-    total_tokens = prompt_tokens + (ocr_tokens * 2)
-    buffer_tokens = int(total_tokens * 0.03)
-    
-    return total_tokens + buffer_tokens
+    try:
+        encoding = tiktoken.encoding_for_model("gpt-4")
+        
+        prompt_tokens = len(encoding.encode(prompt))
+        ocr_tokens = len(encoding.encode(ocr_text))
+        
+        # Apply formula: prompt + (ocr * 2) + 3% buffer
+        total_tokens = prompt_tokens + (ocr_tokens * 2)
+        buffer_tokens = int(total_tokens * 0.03)
+        
+        return total_tokens + buffer_tokens
+    except Exception as e:
+        # Fallback logic to be refined in development
+        return len(prompt) + len(ocr_text) * 2  # Rough estimate
 ```
 
 **Cost Estimation**:
@@ -498,13 +553,8 @@ Provide:
 4. **Quality Verification**: Re-assess after reprocessing
 5. **Integration**: Merge improved OCR with existing correction system
 
-**Database Schema Updates**:
+**Additional Database Schema**:
 ```sql
--- Add OCR quality tracking
-ALTER TABLE images ADD COLUMN ocr_quality_score INTEGER DEFAULT NULL;
-ALTER TABLE images ADD COLUMN ocr_quality_status TEXT DEFAULT 'pending'; -- 'pending', 'high_quality', 'needs_correction', 'reprocess_required'
-ALTER TABLE images ADD COLUMN reprocess_priority INTEGER DEFAULT 0; -- Higher numbers = higher priority
-
 -- Track reprocessing attempts
 CREATE TABLE ocr_reprocessing_queue (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -570,8 +620,12 @@ class OCRQualityAssessment:
         try:
             return dirtyjson.loads(json_response)
         except Exception as e:
-            # Fallback parsing or logging
+            # Fallback parsing or logging - will be refined in development
             return None
+    
+    def validate_correction_changes(self, original_text: str, corrected_text: str) -> bool:
+        """Validate that corrected text is actually different from original"""
+        return original_text.strip() != corrected_text.strip()
     
     def flag_for_reprocessing(self, image_id: int, reason: str, priority: int = 0):
         """Add image to reprocessing queue"""
@@ -656,6 +710,7 @@ class OCRQualityAssessment:
 ## Implementation Priority
 
 **Phase 1: Database Schema & Basic Integration**
+- **BACKUP DATABASE FIRST**: Create timestamped backup before any changes
 - Add correction tables to database with idempotent schema updates
 - Implement basic LLM API integration
 - Add cost tracking and rate limiting
