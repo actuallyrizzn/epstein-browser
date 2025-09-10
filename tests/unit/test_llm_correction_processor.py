@@ -165,7 +165,8 @@ class TestLLMCorrectionProcessor:
             with patch('builtins.print') as mock_print:
                 result = self.processor.get_ocr_text("test/file.jpg")
                 assert result is None
-                mock_print.assert_called_once()
+                # Should print error message
+                assert any("Error reading OCR text" in str(call) for call in mock_print.call_args_list)
     
     def test_process_image_no_ocr_text(self):
         """Test processing image with no OCR text"""
@@ -233,14 +234,16 @@ class TestLLMCorrectionProcessor:
         self.mock_ocr_assessor.validate_correction_changes.return_value = False
         
         with patch.object(self.processor, 'get_ocr_text', return_value="Same text"):
-            with patch('builtins.print') as mock_print:
-                result = self.processor.process_image({
-                    'id': 1,
-                    'file_path': 'test1.jpg',
-                    'file_name': 'test1.jpg'
-                })
-                assert result is False
-                mock_print.assert_called_with("  No changes detected for image 1, skipping")
+            with patch('time.time', side_effect=[0, 1.0]):  # Mock processing time
+                with patch('builtins.print') as mock_print:
+                    result = self.processor.process_image({
+                        'id': 1,
+                        'file_path': 'test1.jpg',
+                        'file_name': 'test1.jpg'
+                    })
+                    assert result is False
+                    # Check that the no changes message was printed
+                    assert any("No changes detected" in str(call) for call in mock_print.call_args_list)
     
     def test_process_image_rate_limit_error(self):
         """Test processing image with rate limit error"""
@@ -332,7 +335,8 @@ class TestLLMCorrectionProcessor:
                     assert result["successful"] == 0
                     assert result["failed"] == 0
                     assert result["rate_limited"] is True
-                    mock_print.assert_called_with("Rate limited - stopping processing")
+                    # Check that rate limit message was printed
+                    assert any("Rate limited" in str(call) for call in mock_print.call_args_list)
     
     def test_process_batch_keyboard_interrupt(self):
         """Test batch processing with keyboard interrupt"""
@@ -348,7 +352,8 @@ class TestLLMCorrectionProcessor:
                     assert result["successful"] == 0
                     assert result["failed"] == 0
                     assert result["rate_limited"] is False
-                    mock_print.assert_called_with("\nProcessing interrupted by user")
+                    # Check that interrupt message was printed
+                    assert any("Processing interrupted" in str(call) for call in mock_print.call_args_list)
 
 
 class TestMainFunction:

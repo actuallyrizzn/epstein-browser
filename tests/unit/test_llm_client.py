@@ -51,15 +51,12 @@ class TestLLMClient:
         
         # Mock time.time to control timing
         with patch('time.time') as mock_time:
-            mock_time.side_effect = [0, 0.5, 1.5]  # First call, second call, third call
+            mock_time.side_effect = [0, 0.5, 1.5, 2.0]  # First call, second call, third call, fourth call
             
             # First call should not sleep
             self.llm_client._rate_limit()
             
             # Second call should sleep for 0.5 seconds
-            self.llm_client._rate_limit()
-            
-            # Verify sleep was called
             with patch('time.sleep') as mock_sleep:
                 self.llm_client._rate_limit()
                 mock_sleep.assert_called_once_with(0.5)
