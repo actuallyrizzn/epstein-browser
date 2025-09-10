@@ -145,6 +145,20 @@ ALTER TABLE images ADD COLUMN ocr_rescan_attempts INTEGER DEFAULT 0;   -- for id
 - Add migration logic to check for existing fields and add them if missing
 - Existing installations will need the scan tool to add these fields automatically
 
+**⚠️ CRITICAL ARCHITECTURAL REQUIREMENT**:
+The **image indexer** (`index_images.py`) is the component that initially builds the database, not the main Flask app. Therefore:
+
+1. **Image Indexer Schema Updates**: The `index_images.py` script MUST handle idempotent schema updates
+2. **Error Detection Script Schema Updates**: Any error detection/rescan scripts MUST also handle idempotent schema updates
+3. **Main App Schema Updates**: The Flask app (`app.py`) should only handle schema updates for production environments where the database already exists
+
+**Implementation Priority**:
+- **Primary**: Update `index_images.py` to handle schema migrations idempotently
+- **Secondary**: Update error detection scripts to handle schema migrations idempotently  
+- **Tertiary**: Ensure Flask app schema updates work for existing production databases
+
+This ensures that whether the database is being built fresh (via indexer) or updated (via error detection), all schema changes are handled consistently and idempotently.
+
 ### Configuration (Environment Variables)
 ```
 OCR_MAX_ATTEMPTS=3

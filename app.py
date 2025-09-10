@@ -183,6 +183,49 @@ def get_db_connection():
     return conn
 
 
+def migrate_database_schema(conn):
+    """Idempotent database schema migration for new fields"""
+    cursor = conn.cursor()
+    
+    # Check if images table exists
+    cursor.execute("""
+        SELECT name FROM sqlite_master 
+        WHERE type='table' AND name='images'
+    """)
+    if not cursor.fetchone():
+        app.logger.info("Images table does not exist, skipping migration")
+        return
+    
+    # Get current table schema
+    cursor.execute("PRAGMA table_info(images)")
+    columns = {row[1]: row for row in cursor.fetchall()}
+    
+    # Add ocr_quality_score column if it doesn't exist
+    if 'ocr_quality_score' not in columns:
+        app.logger.info("Adding ocr_quality_score column to images table")
+        cursor.execute("""
+            ALTER TABLE images ADD COLUMN ocr_quality_score INTEGER DEFAULT NULL
+        """)
+    else:
+        app.logger.debug("ocr_quality_score column already exists")
+    
+    # Add ocr_rescan_attempts column if it doesn't exist
+    if 'ocr_rescan_attempts' not in columns:
+        app.logger.info("Adding ocr_rescan_attempts column to images table")
+        cursor.execute("""
+            ALTER TABLE images ADD COLUMN ocr_rescan_attempts INTEGER DEFAULT 0
+        """)
+    else:
+        app.logger.debug("ocr_rescan_attempts column already exists")
+    
+    # Create indexes for new columns
+    cursor.execute("CREATE INDEX IF NOT EXISTS idx_images_ocr_quality_score ON images(ocr_quality_score)")
+    cursor.execute("CREATE INDEX IF NOT EXISTS idx_images_ocr_rescan_attempts ON images(ocr_rescan_attempts)")
+    
+    conn.commit()
+    app.logger.info("Database schema migration completed successfully")
+
+
 def init_database(conn=None):
     """Initialize all database tables if they don't exist"""
     created_conn = False
@@ -266,6 +309,10 @@ def init_database(conn=None):
     cursor.execute("CREATE INDEX IF NOT EXISTS idx_search_queries_type ON search_queries(search_type)")
     
     conn.commit()
+    
+    # Run schema migration for new fields
+    migrate_database_schema(conn)
+    
     # Only close the connection if we created it
     if created_conn:
         conn.close()

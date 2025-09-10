@@ -41,6 +41,50 @@ DB_PATH = "images.db"
 IMAGE_EXTENSIONS = {'.jpg', '.jpeg', '.png', '.tif', '.tiff', '.bmp', '.webp', '.gif'}
 
 
+def migrate_database_schema():
+    """Idempotent database schema migration for new fields"""
+    with sqlite3.connect(DB_PATH) as conn:
+        cursor = conn.cursor()
+        
+        # Check if images table exists
+        cursor.execute("""
+            SELECT name FROM sqlite_master 
+            WHERE type='table' AND name='images'
+        """)
+        if not cursor.fetchone():
+            logger.info("Images table does not exist, skipping migration")
+            return
+        
+        # Get current table schema
+        cursor.execute("PRAGMA table_info(images)")
+        columns = {row[1]: row for row in cursor.fetchall()}
+        
+        # Add ocr_quality_score column if it doesn't exist
+        if 'ocr_quality_score' not in columns:
+            logger.info("Adding ocr_quality_score column to images table")
+            cursor.execute("""
+                ALTER TABLE images ADD COLUMN ocr_quality_score INTEGER DEFAULT NULL
+            """)
+        else:
+            logger.debug("ocr_quality_score column already exists")
+        
+        # Add ocr_rescan_attempts column if it doesn't exist
+        if 'ocr_rescan_attempts' not in columns:
+            logger.info("Adding ocr_rescan_attempts column to images table")
+            cursor.execute("""
+                ALTER TABLE images ADD COLUMN ocr_rescan_attempts INTEGER DEFAULT 0
+            """)
+        else:
+            logger.debug("ocr_rescan_attempts column already exists")
+        
+        # Create indexes for new columns
+        cursor.execute("CREATE INDEX IF NOT EXISTS idx_images_ocr_quality_score ON images(ocr_quality_score)")
+        cursor.execute("CREATE INDEX IF NOT EXISTS idx_images_ocr_rescan_attempts ON images(ocr_rescan_attempts)")
+        
+        conn.commit()
+        logger.info("Database schema migration completed successfully")
+
+
 def init_database():
     """Initialize the SQLite database"""
     with sqlite3.connect(DB_PATH) as conn:
@@ -106,6 +150,9 @@ def init_database():
         
         conn.commit()
         logger.info("Database initialized successfully")
+        
+        # Run schema migration for new fields
+        migrate_database_schema()
 
 
 def calculate_file_hash(file_path: Path) -> str:
