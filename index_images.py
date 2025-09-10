@@ -280,95 +280,70 @@ def index_images():
         
         # Index images
         logger.info("Indexing images...")
-        # Get all image files and sort them properly
+        # Get all image files and sort them properly (excluding screenshots folder)
         image_files = []
         for file_path in DATA_DIR.rglob("*"):
-            if file_path.is_file() and file_path.suffix.lower() in IMAGE_EXTENSIONS:
+            if (file_path.is_file() and 
+                file_path.suffix.lower() in IMAGE_EXTENSIONS and
+                'screenshots' not in str(file_path)):
                 image_files.append(file_path)
         
-        # Sort by path to ensure consistent order (IMAGES001, IMAGES002, etc.)
-        image_files.sort(key=lambda x: str(x))
+        # Sort by filename to ensure proper document sequence (DOJ-OGR-00000001, DOJ-OGR-00000002, etc.)
+        image_files.sort(key=lambda x: x.name)
         
-        for file_path in image_files:
-                try:
-                    relative_path = str(file_path.relative_to(DATA_DIR))
-                    directory_path = str(file_path.parent.relative_to(DATA_DIR))
-                    current_files.add(relative_path)
+        # Process images in filename order and assign sequential IDs
+        for index, file_path in enumerate(image_files, start=1):
+            try:
+                relative_path = str(file_path.relative_to(DATA_DIR))
+                directory_path = str(file_path.parent.relative_to(DATA_DIR))
+                current_files.add(relative_path)
+                
+                # Extract volume and subdirectory info
+                path_parts = relative_path.split('\\')
+                volume = None
+                subdirectory = None
+                
+                for part in path_parts:
+                    if part.startswith('VOL'):
+                        volume = part
+                        break
+                
+                if len(path_parts) > 2:
+                    subdirectory = '\\'.join(path_parts[2:-1]) if len(path_parts) > 3 else path_parts[2]
+                
+                # Check for OCR text file
+                ocr_text_path = file_path.with_suffix('.txt')
+                has_ocr_text = ocr_text_path.exists()
+                
+                # Calculate file hash
+                file_hash = calculate_file_hash(file_path)
+                
+                # Check if file already exists and if it's changed
+                if relative_path in existing_images:
+                    existing_data = existing_images[relative_path]
                     
-                    # Extract volume and subdirectory info
-                    path_parts = relative_path.split('\\')
-                    volume = None
-                    subdirectory = None
-                    
-                    for part in path_parts:
-                        if part.startswith('VOL'):
-                            volume = part
-                            break
-                    
-                    if len(path_parts) > 2:
-                        subdirectory = '\\'.join(path_parts[2:-1]) if len(path_parts) > 3 else path_parts[2]
-                    
-                    # Check for OCR text file
-                    ocr_text_path = file_path.with_suffix('.txt')
-                    has_ocr_text = ocr_text_path.exists()
-                    
-                    # Calculate file hash
-                    file_hash = calculate_file_hash(file_path)
-                    
-                    # Check if file already exists and if it's changed
-                    if relative_path in existing_images:
-                        existing_data = existing_images[relative_path]
-                        
-                        # Check if file has changed (hash comparison)
-                        if existing_data['hash'] == file_hash:
-                            # File unchanged, preserve OCR status
-                            stats['images_skipped'] += 1
-                            continue
-                        else:
-                            # File changed, update but preserve OCR status if still valid
-                            if existing_data['has_ocr_text'] and has_ocr_text:
-                                # Keep existing OCR status
-                                has_ocr_text = existing_data['has_ocr_text']
-                                ocr_text_path_str = existing_data['ocr_text_path']
-                            else:
-                                # Update OCR status based on current file
-                                ocr_text_path_str = str(ocr_text_path.relative_to(DATA_DIR)) if has_ocr_text else None
-                            
-                            cursor.execute("""
-                                UPDATE images 
-                                SET file_name = ?, file_size = ?, file_type = ?, directory_path = ?,
-                                    volume = ?, subdirectory = ?, file_hash = ?, has_ocr_text = ?, 
-                                    ocr_text_path = ?, updated_at = CURRENT_TIMESTAMP
-                                WHERE file_path = ?
-                            """, (
-                                file_path.name,
-                                file_path.stat().st_size,
-                                file_path.suffix.lower(),
-                                directory_path,
-                                volume,
-                                subdirectory,
-                                file_hash,
-                                has_ocr_text,
-                                ocr_text_path_str,
-                                relative_path
-                            ))
-                            stats['images_updated'] += 1
-                            
-                            # Index OCR content if available
-                            if has_ocr_text:
-                                cursor.execute("SELECT id FROM images WHERE file_path = ?", (relative_path,))
-                                image_id = cursor.fetchone()[0]
-                                if index_ocr_content(image_id, ocr_text_path, cursor):
-                                    stats['ocr_content_indexed'] = stats.get('ocr_content_indexed', 0) + 1
+                    # Check if file has changed (hash comparison)
+                    if existing_data['hash'] == file_hash:
+                        # File unchanged, preserve OCR status
+                        stats['images_skipped'] += 1
+                        continue
                     else:
-                        # New file
+                        # File changed, update but preserve OCR status if still valid
+                        if existing_data['has_ocr_text'] and has_ocr_text:
+                            # Keep existing OCR status
+                            has_ocr_text = existing_data['has_ocr_text']
+                            ocr_text_path_str = existing_data['ocr_text_path']
+                        else:
+                            # Update OCR status based on current file
+                            ocr_text_path_str = str(ocr_text_path.relative_to(DATA_DIR)) if has_ocr_text else None
+                        
                         cursor.execute("""
-                            INSERT INTO images 
-                            (file_path, file_name, file_size, file_type, directory_path, 
-                             volume, subdirectory, file_hash, has_ocr_text, ocr_text_path)
-                            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                            UPDATE images 
+                            SET file_name = ?, file_size = ?, file_type = ?, directory_path = ?,
+                                volume = ?, subdirectory = ?, file_hash = ?, has_ocr_text = ?, 
+                                ocr_text_path = ?, updated_at = CURRENT_TIMESTAMP
+                            WHERE file_path = ?
                         """, (
-                            relative_path,
                             file_path.name,
                             file_path.stat().st_size,
                             file_path.suffix.lower(),
@@ -377,9 +352,10 @@ def index_images():
                             subdirectory,
                             file_hash,
                             has_ocr_text,
-                            str(ocr_text_path.relative_to(DATA_DIR)) if has_ocr_text else None
+                            ocr_text_path_str,
+                            relative_path
                         ))
-                        stats['images_indexed'] += 1
+                        stats['images_updated'] += 1
                         
                         # Index OCR content if available
                         if has_ocr_text:
@@ -387,14 +363,40 @@ def index_images():
                             image_id = cursor.fetchone()[0]
                             if index_ocr_content(image_id, ocr_text_path, cursor):
                                 stats['ocr_content_indexed'] = stats.get('ocr_content_indexed', 0) + 1
+                else:
+                    # New file - insert with explicit ID based on filename order
+                    cursor.execute("""
+                        INSERT INTO images 
+                        (id, file_path, file_name, file_size, file_type, directory_path, 
+                         volume, subdirectory, file_hash, has_ocr_text, ocr_text_path)
+                        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                    """, (
+                        index,  # Explicit ID based on filename order
+                        relative_path,
+                        file_path.name,
+                        file_path.stat().st_size,
+                        file_path.suffix.lower(),
+                        directory_path,
+                        volume,
+                        subdirectory,
+                        file_hash,
+                        has_ocr_text,
+                        str(ocr_text_path.relative_to(DATA_DIR)) if has_ocr_text else None
+                    ))
+                    stats['images_indexed'] += 1
                     
-                    total_processed = stats['images_indexed'] + stats['images_updated'] + stats['images_skipped']
-                    if total_processed % 1000 == 0:
-                        logger.info(f"Processed {total_processed} images... (new: {stats['images_indexed']}, updated: {stats['images_updated']}, skipped: {stats['images_skipped']})")
-                        
-                except Exception as e:
-                    logger.error(f"Error indexing image {file_path}: {e}")
-                    stats['errors'] += 1
+                    # Index OCR content if available
+                    if has_ocr_text:
+                        if index_ocr_content(index, ocr_text_path, cursor):
+                            stats['ocr_content_indexed'] = stats.get('ocr_content_indexed', 0) + 1
+                
+                total_processed = stats['images_indexed'] + stats['images_updated'] + stats['images_skipped']
+                if total_processed % 1000 == 0:
+                    logger.info(f"Processed {total_processed} images... (new: {stats['images_indexed']}, updated: {stats['images_updated']}, skipped: {stats['images_skipped']})")
+                    
+            except Exception as e:
+                logger.error(f"Error indexing image {file_path}: {e}")
+                stats['errors'] += 1
         
         # Handle deleted files
         logger.info("Checking for deleted files...")
