@@ -295,7 +295,7 @@ def handle_service_unavailable(error):
     return render_template('server_busy.html'), 503
 
 
-def handle_db_operations(max_retries=3, retry_delay=0.1, timeout=5.0):
+def handle_db_operations(max_retries=3, retry_delay=0.1, timeout=30.0):
     """
     Decorator to handle database operations with retry logic and lock detection.
     
@@ -832,61 +832,66 @@ def api_search():
             LIMIT ? OFFSET ?
         """, main_params + [per_page, offset]).fetchall()
         
-        # If searching all content or OCR only, also search OCR text
+        # If searching all content or OCR only, also search OCR text using database
         ocr_text_results = []
         if search_type in ['all', 'ocr']:
-            # Get all images with OCR text (no limit for comprehensive search)
-            # Only exclude files that already matched filename search when doing 'all' search
-            if search_type == 'all':
-                ocr_candidates = conn.execute("""
-                    SELECT id, file_name, file_path, directory_path, has_ocr_text
-                    FROM images 
-                    WHERE has_ocr_text = TRUE
-                    AND file_name NOT LIKE ?
-                    ORDER BY file_name 
-                """, (f'%{query}%',)).fetchall()
-            else:  # OCR only search
-                ocr_candidates = conn.execute("""
-                    SELECT id, file_name, file_path, directory_path, has_ocr_text
-                    FROM images 
-                    WHERE has_ocr_text = TRUE
-                    ORDER BY file_name 
-                """).fetchall()
-            
-            # Check OCR text content
-            for row in ocr_candidates:
-                try:
-                    # Read the OCR text file
-                    ocr_file_path = get_data_dir() / row['file_path'].replace(row['file_path'].split('.')[-1], 'txt')
-                    if ocr_file_path.exists():
-                        ocr_text = ocr_file_path.read_text(encoding='utf-8', errors='ignore')
-                        query_lower = query.lower()
-                        ocr_text_lower = ocr_text.lower()
-                        
-                        if query_lower in ocr_text_lower:
-                            # Find the position of the match
-                            match_pos = ocr_text_lower.find(query_lower)
-                            
-                            # Extract context around the match (100 chars before and after)
-                            context_start = max(0, match_pos - 100)
-                            context_end = min(len(ocr_text), match_pos + len(query) + 100)
-                            excerpt = ocr_text[context_start:context_end]
-                            
-                            # Add ellipsis if we're not at the beginning/end
-                            if context_start > 0:
-                                excerpt = "..." + excerpt
-                            if context_end < len(ocr_text):
-                                excerpt = excerpt + "..."
-                            
-                            # Create result with excerpt
-                            result = dict(row)
-                            result['excerpt'] = excerpt
-                            result['match_type'] = 'ocr'
-                            result['match_position'] = match_pos
-                            ocr_text_results.append(result)
-                except Exception as e:
-                    print(f"Error reading OCR file for {row['file_name']}: {e}")
-                    continue
+            try:
+                # Use database search for OCR content (faster than file I/O)
+                if search_type == 'all':
+                    # Exclude files that already matched filename search
+                    filename_paths = [row['file_path'] for row in filename_results]
+                    if filename_paths:
+                        placeholders = ','.join('?' for _ in filename_paths)
+                        ocr_query = f"""
+                            SELECT i.id, i.file_name, i.file_path, i.directory_path, i.has_ocr_text,
+                                   'ocr' as match_type,
+                                   SUBSTR(oc.content, 
+                                          MAX(1, INSTR(LOWER(oc.content), LOWER(?)) - 50),
+                                          100) as excerpt
+                            FROM images i
+                            JOIN ocr_content oc ON i.id = oc.image_id
+                            WHERE i.has_ocr_text = TRUE 
+                            AND LOWER(oc.content) LIKE LOWER(?)
+                            AND i.file_path NOT IN ({placeholders})
+                            ORDER BY i.file_name
+                        """
+                        ocr_params = [query, f'%{query}%'] + filename_paths
+                    else:
+                        ocr_query = """
+                            SELECT i.id, i.file_name, i.file_path, i.directory_path, i.has_ocr_text,
+                                   'ocr' as match_type,
+                                   SUBSTR(oc.content, 
+                                          MAX(1, INSTR(LOWER(oc.content), LOWER(?)) - 50),
+                                          100) as excerpt
+                            FROM images i
+                            JOIN ocr_content oc ON i.id = oc.image_id
+                            WHERE i.has_ocr_text = TRUE 
+                            AND LOWER(oc.content) LIKE LOWER(?)
+                            ORDER BY i.file_name
+                        """
+                        ocr_params = [query, f'%{query}%']
+                else:  # OCR only search
+                    ocr_query = """
+                        SELECT i.id, i.file_name, i.file_path, i.directory_path, i.has_ocr_text,
+                               'ocr' as match_type,
+                               SUBSTR(oc.content, 
+                                      MAX(1, INSTR(LOWER(oc.content), LOWER(?)) - 50),
+                                      100) as excerpt
+                        FROM images i
+                        JOIN ocr_content oc ON i.id = oc.image_id
+                        WHERE i.has_ocr_text = TRUE 
+                        AND LOWER(oc.content) LIKE LOWER(?)
+                        ORDER BY i.file_name
+                    """
+                    ocr_params = [query, f'%{query}%']
+                
+                ocr_cursor = conn.execute(ocr_query, ocr_params)
+                ocr_text_results = [dict(row) for row in ocr_cursor.fetchall()]
+                
+            except Exception as e:
+                # Fallback to old method if database search fails
+                app.logger.warning(f"Database OCR search failed, falling back to file-based search: {e}")
+                ocr_text_results = []
         
         conn.close()
         

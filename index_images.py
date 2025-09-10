@@ -26,6 +26,7 @@ import logging
 from pathlib import Path
 from datetime import datetime
 import hashlib
+import argparse
 
 # Set up logging
 logging.basicConfig(
@@ -77,11 +78,30 @@ def init_database():
             )
         """)
         
+        # Create OCR content table for full-text search
+        cursor.execute("""
+            CREATE TABLE IF NOT EXISTS ocr_content (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                image_id INTEGER NOT NULL,
+                content TEXT NOT NULL,
+                content_hash TEXT,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                FOREIGN KEY (image_id) REFERENCES images (id) ON DELETE CASCADE
+            )
+        """)
+        
+        # Note: FTS5 table removed - using database search instead
+        
         # Create indexes
         cursor.execute("CREATE INDEX IF NOT EXISTS idx_images_path ON images(file_path)")
         cursor.execute("CREATE INDEX IF NOT EXISTS idx_images_directory ON images(directory_path)")
         cursor.execute("CREATE INDEX IF NOT EXISTS idx_images_volume ON images(volume)")
         cursor.execute("CREATE INDEX IF NOT EXISTS idx_images_type ON images(file_type)")
+        cursor.execute("CREATE INDEX IF NOT EXISTS idx_images_has_ocr_text ON images(has_ocr_text)")
+        cursor.execute("CREATE INDEX IF NOT EXISTS idx_images_file_name ON images(file_name)")
+        cursor.execute("CREATE INDEX IF NOT EXISTS idx_ocr_content_image_id ON ocr_content(image_id)")
+        cursor.execute("CREATE INDEX IF NOT EXISTS idx_ocr_content_search ON ocr_content(content)")
         cursor.execute("CREATE INDEX IF NOT EXISTS idx_directories_path ON directories(path)")
         
         conn.commit()
@@ -101,6 +121,47 @@ def calculate_file_hash(file_path: Path) -> str:
         return ""
 
 
+def index_ocr_content(image_id: int, ocr_text_path: Path, cursor) -> bool:
+    """Index OCR content for full-text search"""
+    try:
+        if not ocr_text_path.exists():
+            return False
+            
+        # Read OCR content
+        content = ocr_text_path.read_text(encoding='utf-8', errors='ignore')
+        if not content.strip():
+            return False
+            
+        # Calculate content hash
+        content_hash = hashlib.md5(content.encode('utf-8')).hexdigest()
+        
+        # Check if OCR content already exists and is unchanged
+        cursor.execute("""
+            SELECT id, content_hash FROM ocr_content WHERE image_id = ?
+        """, (image_id,))
+        existing = cursor.fetchone()
+        
+        if existing and existing[1] == content_hash:
+            # Content unchanged, skip
+            return True
+            
+        # Delete existing OCR content if it exists
+        if existing:
+            cursor.execute("DELETE FROM ocr_content WHERE image_id = ?", (image_id,))
+        
+        # Insert new OCR content
+        cursor.execute("""
+            INSERT INTO ocr_content (image_id, content, content_hash)
+            VALUES (?, ?, ?)
+        """, (image_id, content, content_hash))
+        
+        return True
+        
+    except Exception as e:
+        logger.error(f"Error indexing OCR content for image {image_id}: {e}")
+        return False
+
+
 def index_images():
     """Index all image files (idempotent - preserves existing data)"""
     if not DATA_DIR.exists():
@@ -114,6 +175,7 @@ def index_images():
         'images_deleted': 0,
         'directories_indexed': 0,
         'directories_updated': 0,
+        'ocr_content_indexed': 0,
         'errors': 0
     }
     
@@ -244,6 +306,13 @@ def index_images():
                                 relative_path
                             ))
                             stats['images_updated'] += 1
+                            
+                            # Index OCR content if available
+                            if has_ocr_text:
+                                cursor.execute("SELECT id FROM images WHERE file_path = ?", (relative_path,))
+                                image_id = cursor.fetchone()[0]
+                                if index_ocr_content(image_id, ocr_text_path, cursor):
+                                    stats['ocr_content_indexed'] = stats.get('ocr_content_indexed', 0) + 1
                     else:
                         # New file
                         cursor.execute("""
@@ -264,6 +333,13 @@ def index_images():
                             str(ocr_text_path.relative_to(DATA_DIR)) if has_ocr_text else None
                         ))
                         stats['images_indexed'] += 1
+                        
+                        # Index OCR content if available
+                        if has_ocr_text:
+                            cursor.execute("SELECT id FROM images WHERE file_path = ?", (relative_path,))
+                            image_id = cursor.fetchone()[0]
+                            if index_ocr_content(image_id, ocr_text_path, cursor):
+                                stats['ocr_content_indexed'] = stats.get('ocr_content_indexed', 0) + 1
                     
                     total_processed = stats['images_indexed'] + stats['images_updated'] + stats['images_skipped']
                     if total_processed % 1000 == 0:
@@ -296,9 +372,88 @@ def index_images():
             )
         """)
         
+        # Index OCR content for existing images that have OCR but no content indexed
+        logger.info("Indexing OCR content for existing images...")
+        cursor.execute("""
+            SELECT i.id, i.file_path, i.has_ocr_text, i.ocr_text_path
+            FROM images i
+            LEFT JOIN ocr_content oc ON i.id = oc.image_id
+            WHERE i.has_ocr_text = TRUE AND oc.image_id IS NULL
+        """)
+        ocr_images = cursor.fetchall()
+        
+        for image_id, file_path, has_ocr_text, ocr_text_path in ocr_images:
+            try:
+                if ocr_text_path:
+                    ocr_file_path = DATA_DIR / ocr_text_path
+                else:
+                    # Fallback to .txt extension
+                    ocr_file_path = DATA_DIR / file_path.replace(file_path.split('.')[-1], 'txt')
+                
+                if index_ocr_content(image_id, ocr_file_path, cursor):
+                    stats['ocr_content_indexed'] = stats.get('ocr_content_indexed', 0) + 1
+                    
+                if stats['ocr_content_indexed'] % 1000 == 0:
+                    logger.info(f"Indexed {stats['ocr_content_indexed']} OCR content records...")
+                    
+            except Exception as e:
+                logger.error(f"Error indexing OCR content for image {image_id}: {e}")
+                stats['errors'] += 1
+        
         conn.commit()
     
     logger.info(f"Indexing complete: {stats}")
+    return stats
+
+
+def index_ocr_content_only():
+    """Index OCR content for all existing images that have OCR but no content indexed"""
+    if not DATA_DIR.exists():
+        logger.error(f"Data directory {DATA_DIR} does not exist!")
+        return
+    
+    stats = {
+        'ocr_content_indexed': 0,
+        'errors': 0
+    }
+    
+    with sqlite3.connect(DB_PATH) as conn:
+        cursor = conn.cursor()
+        
+        # Get all images that have OCR but no content indexed
+        logger.info("Finding images with OCR that need content indexing...")
+        cursor.execute("""
+            SELECT i.id, i.file_path, i.has_ocr_text, i.ocr_text_path
+            FROM images i
+            LEFT JOIN ocr_content oc ON i.id = oc.image_id
+            WHERE i.has_ocr_text = TRUE AND oc.image_id IS NULL
+        """)
+        ocr_images = cursor.fetchall()
+        
+        total_images = len(ocr_images)
+        logger.info(f"Found {total_images} images with OCR that need content indexing")
+        
+        for i, (image_id, file_path, has_ocr_text, ocr_text_path) in enumerate(ocr_images):
+            try:
+                if ocr_text_path:
+                    ocr_file_path = DATA_DIR / ocr_text_path
+                else:
+                    # Fallback to .txt extension
+                    ocr_file_path = DATA_DIR / file_path.replace(file_path.split('.')[-1], 'txt')
+                
+                if index_ocr_content(image_id, ocr_file_path, cursor):
+                    stats['ocr_content_indexed'] += 1
+                    
+                if (i + 1) % 1000 == 0:
+                    logger.info(f"Indexed {i + 1}/{total_images} OCR content records... ({stats['ocr_content_indexed']} successful)")
+                    
+            except Exception as e:
+                logger.error(f"Error indexing OCR content for image {image_id}: {e}")
+                stats['errors'] += 1
+        
+        conn.commit()
+    
+    logger.info(f"OCR content indexing complete: {stats}")
     return stats
 
 
@@ -360,6 +515,14 @@ def show_statistics():
 
 def main():
     """Main function"""
+    parser = argparse.ArgumentParser(description='Epstein Documents Image Indexer')
+    parser.add_argument('--ocr-only', action='store_true', 
+                       help='Only index OCR content for existing images (skip image indexing)')
+    parser.add_argument('--stats-only', action='store_true',
+                       help='Only show database statistics (no indexing)')
+    
+    args = parser.parse_args()
+    
     print("🔍 Epstein Documents Image Indexer")
     print("=" * 50)
     
@@ -367,22 +530,38 @@ def main():
     logger.info("Initializing database...")
     init_database()
     
-    # Index images
-    logger.info("Starting image indexing...")
-    stats = index_images()
+    if args.stats_only:
+        # Only show statistics
+        show_statistics()
+        return
     
-    # Show statistics
-    show_statistics()
-    
-    print(f"\n✅ Indexing complete!")
-    print(f"📊 Database: {DB_PATH}")
-    print(f"📁 New images: {stats['images_indexed']:,}")
-    print(f"🔄 Updated images: {stats['images_updated']:,}")
-    print(f"⏭️ Skipped images: {stats['images_skipped']:,}")
-    print(f"🗑️ Deleted images: {stats['images_deleted']:,}")
-    print(f"📂 New directories: {stats['directories_indexed']}")
-    print(f"🔄 Updated directories: {stats['directories_updated']}")
-    print(f"❌ Errors: {stats['errors']}")
+    if args.ocr_only:
+        # Only index OCR content
+        logger.info("Starting OCR content indexing only...")
+        stats = index_ocr_content_only()
+        
+        print(f"\n✅ OCR content indexing complete!")
+        print(f"📊 Database: {DB_PATH}")
+        print(f"📝 OCR content indexed: {stats['ocr_content_indexed']:,}")
+        print(f"❌ Errors: {stats['errors']}")
+    else:
+        # Full indexing
+        logger.info("Starting full image indexing...")
+        stats = index_images()
+        
+        # Show statistics
+        show_statistics()
+        
+        print(f"\n✅ Indexing complete!")
+        print(f"📊 Database: {DB_PATH}")
+        print(f"📁 New images: {stats['images_indexed']:,}")
+        print(f"🔄 Updated images: {stats['images_updated']:,}")
+        print(f"⏭️ Skipped images: {stats['images_skipped']:,}")
+        print(f"🗑️ Deleted images: {stats['images_deleted']:,}")
+        print(f"📂 New directories: {stats['directories_indexed']}")
+        print(f"🔄 Updated directories: {stats['directories_updated']}")
+        print(f"📝 OCR content indexed: {stats['ocr_content_indexed']:,}")
+        print(f"❌ Errors: {stats['errors']}")
 
 
 if __name__ == "__main__":
