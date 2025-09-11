@@ -726,12 +726,27 @@ def view_image(image_id):
     else:
         progress_percent = 100.0  # Only one image
     
+    # Calculate the document number based on the filename (extract the number from DOJ-OGR-00000003.jpg)
+    document_number = None
+    if image['file_name'].startswith('DOJ-OGR-'):
+        try:
+            # Extract the number from DOJ-OGR-00000003.jpg -> 3
+            number_part = image['file_name'].split('-')[2].split('.')[0]
+            document_number = int(number_part)
+        except (ValueError, IndexError):
+            document_number = current_position + 1  # Fallback to position
+    else:
+        document_number = current_position + 1  # Fallback to position
+    
     return render_template('viewer.html',
                          image=image,
                          image_id=image_id,
                          total_images=total_images,
                          prev_id=prev_id,
                          next_id=next_id,
+                         first_id=first_id,
+                         last_id=last_id,
+                         document_number=document_number,
                          ocr_text=ocr_text,
                          ocr_original_text=ocr_original_text,
                          ocr_corrected_text=ocr_corrected_text,

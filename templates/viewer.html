@@ -3,24 +3,24 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Document {{ image_id }} of {{ total_images }} - {{ image.file_name }} - Epstein Documents Browser</title>
+    <title>Document {{ document_number }} of {{ total_images }} - {{ image.file_name }} - Epstein Documents Browser</title>
     
     <!-- SEO Meta Tags -->
-    <meta name="description" content="Viewing document {{ image_id }} of {{ total_images }}: {{ image.file_name }}. Browse congressional records with OCR text extraction and advanced search capabilities.">
+    <meta name="description" content="Viewing document {{ document_number }} of {{ total_images }}: {{ image.file_name }}. Browse congressional records with OCR text extraction and advanced search capabilities.">
     <meta name="keywords" content="congressional records, document viewer, {{ image.file_name }}, OCR, search, open source">
     <meta name="author" content="Mark Rizzn Hopkins">
     <meta name="robots" content="index, follow">
     
     <!-- Open Graph / Facebook -->
     <meta property="og:type" content="article">
-    <meta property="og:title" content="Document {{ image_id }} of {{ total_images }} - {{ image.file_name }} - Epstein Documents Browser">
+    <meta property="og:title" content="Document {{ document_number }} of {{ total_images }} - {{ image.file_name }} - Epstein Documents Browser">
     <meta property="og:description" content="Viewing congressional document: {{ image.file_name }}. Browse with OCR text extraction and advanced search capabilities.">
     <meta property="og:image" content="{{ url_for('serve_image', file_path=image.file_path, _external=True) }}">
     <meta property="og:site_name" content="Epstein Documents Browser">
     
     <!-- Twitter -->
     <meta property="twitter:card" content="summary_large_image">
-    <meta property="twitter:title" content="Document {{ image_id }} of {{ total_images }} - {{ image.file_name }} - Epstein Documents Browser">
+    <meta property="twitter:title" content="Document {{ document_number }} of {{ total_images }} - {{ image.file_name }} - Epstein Documents Browser">
     <meta property="twitter:description" content="Viewing congressional document: {{ image.file_name }}. Browse with OCR text extraction and advanced search capabilities.">
     <meta property="twitter:image" content="{{ url_for('serve_image', file_path=image.file_path, _external=True) }}">
     <meta property="twitter:creator" content="@actuallyrizzn">
@@ -31,7 +31,7 @@
         "@context": "https://schema.org",
         "@type": "ImageObject",
         "name": "{{ image.file_name|e }}",
-        "description": "Congressional document {{ image_id }} of {{ total_images }}: {{ image.file_name|e }}",
+        "description": "Congressional document {{ document_number }} of {{ total_images }}: {{ image.file_name|e }}",
         "url": "{{ url_for('serve_image', file_path=image.file_path, _external=True) }}",
         "contentUrl": "{{ url_for('serve_image', file_path=image.file_path, _external=True) }}",
         "thumbnailUrl": "{{ url_for('serve_thumbnail', image_id=image_id, _external=True) }}",
@@ -351,7 +351,7 @@
                 <div class="progress-bar">
                     <div class="progress-fill"></div>
                 </div>
-                <span class="small">{{ image_id }} of {{ total_images }}</span>
+                <span class="small">{{ document_number }} of {{ total_images }}</span>
             </div>
             
             <div class="nav-buttons">
@@ -414,7 +414,7 @@
         <!-- Bottom Bar -->
         <div class="bottom-bar">
             <div class="page-controls">
-                <a href="{{ url_for('view_image', image_id=1) }}" class="nav-btn" title="First page" onclick="goToFirst()">
+                <a href="{{ url_for('view_image', image_id=first_id) }}" class="nav-btn" title="First page" onclick="goToFirst()">
                     <i class="fas fa-angle-double-left"></i>
                 </a>
                 {% if prev_id %}
@@ -427,7 +427,7 @@
                 </button>
                 {% endif %}
                 
-                <span class="mx-3">{{ image_id }} / {{ total_images }}</span>
+                <span class="mx-3">{{ document_number }} / {{ total_images }}</span>
                 
                 {% if next_id %}
                 <a href="{{ url_for('view_image', image_id=next_id) }}" class="nav-btn">
@@ -438,7 +438,7 @@
                     Next<i class="fas fa-chevron-right"></i>
                 </button>
                 {% endif %}
-                <a href="{{ url_for('view_image', image_id=total_images) }}" class="nav-btn" title="Last page" onclick="goToLast()">
+                <a href="{{ url_for('view_image', image_id=last_id) }}" class="nav-btn" title="Last page" onclick="goToLast()">
                     <i class="fas fa-angle-double-right"></i>
                 </a>
             </div>
