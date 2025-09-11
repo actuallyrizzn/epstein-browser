@@ -9,7 +9,7 @@ from unittest.mock import patch, MagicMock
 class TestAPIEndpoints:
     """Test cases for API endpoint integration."""
     
-    def test_search_api_basic(self, client, test_db, mock_analytics):
+    def test_search_api_basic(self, client, test_db, mock_analytics, clean_rate_limiter):
         """Test basic search API functionality."""
         response = client.get('/api/search?q=test')
         
@@ -31,7 +31,7 @@ class TestAPIEndpoints:
         assert 'has_prev' in pagination
         assert 'has_next' in pagination
     
-    def test_search_api_with_filters(self, client, test_db, mock_analytics):
+    def test_search_api_with_filters(self, client, test_db, mock_analytics, clean_rate_limiter):
         """Test search API with different filters."""
         # Test filename search
         response = client.get('/api/search?q=DOJ&type=filename')
@@ -48,7 +48,7 @@ class TestAPIEndpoints:
         response = client.get('/api/search?q=test&ocr=without-ocr')
         assert response.status_code == 200
     
-    def test_search_api_pagination(self, client, test_db, mock_analytics):
+    def test_search_api_pagination(self, client, test_db, mock_analytics, clean_rate_limiter):
         """Test search API pagination."""
         # Test different page sizes
         response = client.get('/api/search?q=test&per_page=10')
@@ -57,7 +57,7 @@ class TestAPIEndpoints:
         data = json.loads(response.data)
         assert data['pagination']['per_page'] == 10
     
-    def test_search_api_empty_query(self, client, test_db, mock_analytics):
+    def test_search_api_empty_query(self, client, test_db, mock_analytics, clean_rate_limiter):
         """Test search API with empty query."""
         response = client.get('/api/search?q=')
         assert response.status_code == 200
@@ -65,7 +65,7 @@ class TestAPIEndpoints:
         data = json.loads(response.data)
         assert data['results'] == []
     
-    def test_stats_api(self, client, test_db, mock_analytics):
+    def test_stats_api(self, client, test_db, mock_analytics, clean_rate_limiter):
         """Test stats API endpoint."""
         response = client.get('/api/stats')
         
@@ -128,7 +128,7 @@ class TestAPIEndpoints:
             # Check content type
             assert response.content_type.startswith('image/')
     
-    def test_api_error_handling(self, client, test_db, mock_analytics):
+    def test_api_error_handling(self, client, test_db, mock_analytics, clean_rate_limiter):
         """Test API error handling."""
         # Test with invalid parameters
         response = client.get('/api/search?per_page=invalid')
@@ -150,7 +150,7 @@ class TestAPIEndpoints:
         # Check content type
         assert response.content_type == 'application/json'
     
-    def test_search_api_with_special_characters(self, client, test_db, mock_analytics):
+    def test_search_api_with_special_characters(self, client, test_db, mock_analytics, clean_rate_limiter):
         """Test search API with special characters in query."""
         # Test with URL-encoded characters
         response = client.get('/api/search?q=test%20query%20with%20spaces')
@@ -169,7 +169,7 @@ class TestAPIEndpoints:
         data = json.loads(response.data)
         assert isinstance(data, dict)
     
-    def test_search_api_sorting(self, client, test_db, mock_analytics):
+    def test_search_api_sorting(self, client, test_db, mock_analytics, clean_rate_limiter):
         """Test search API with different sorting options."""
         # Test different sort options
         for sort_by in ['relevance', 'filename', 'id']:

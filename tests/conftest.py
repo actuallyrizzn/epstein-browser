@@ -80,11 +80,16 @@ def test_db():
     return test_data_dir
 
 
-@pytest.fixture(scope='function', autouse=True)
+@pytest.fixture(scope='function', autouse=False)
 def clean_rate_limiter():
     """Reset the rate limiter for each test."""
-    # Store original limits
+    # Store original limits and requests
     original_limits = rate_limiter.limits.copy()
+    original_requests = rate_limiter.requests
+    original_test_mode = rate_limiter.test_mode
+    
+    # Disable test mode to allow actual rate limiting
+    rate_limiter.test_mode = False
     
     # Reset to normal limits for testing
     rate_limiter.limits = {
@@ -99,11 +104,50 @@ def clean_rate_limiter():
     
     yield
     
-    # Clean up after test
+    # Aggressive cleanup after test
+    rate_limiter.requests.clear()
     rate_limiter.requests = defaultdict(lambda: defaultdict(lambda: deque()))
     
-    # Restore original limits
+    # Restore original state
     rate_limiter.limits = original_limits
+    rate_limiter.test_mode = original_test_mode
+
+@pytest.fixture(scope='function', autouse=True)
+def auto_clean_rate_limiter():
+    """Automatically reset rate limiter for all tests."""
+    # Store original state
+    original_limits = rate_limiter.limits.copy()
+    original_test_mode = rate_limiter.test_mode
+    
+    # Disable test mode to allow actual rate limiting
+    rate_limiter.test_mode = False
+    
+    # Set test limits
+    rate_limiter.limits = {
+        'search': (60, 60),    # 60 requests per 60 seconds
+        'image': (200, 60),    # 200 requests per 60 seconds  
+        'stats': (300, 60),    # 300 requests per 60 seconds
+        'default': (100, 60),  # 100 requests per 60 seconds
+    }
+    
+    # Reset before each test
+    rate_limiter.reset()
+    
+    yield
+    
+    # Reset after each test
+    rate_limiter.reset()
+    
+    # Restore original state
+    rate_limiter.limits = original_limits
+    rate_limiter.test_mode = original_test_mode
+
+@pytest.fixture(scope='session', autouse=True)
+def session_clean_rate_limiter():
+    """Reset rate limiter at the start of each test session."""
+    rate_limiter.reset()
+    yield
+    rate_limiter.reset()
 
 
 @pytest.fixture(scope='function')

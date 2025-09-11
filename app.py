@@ -81,8 +81,14 @@ class RateLimiter:
             'stats': (300, 60),    # 300 requests per 60 seconds
             'default': (100, 60),  # 100 requests per 60 seconds
         }
+        self.test_mode = False
     
     def is_allowed(self, ip, endpoint_type='default'):
+        # In test mode, always allow requests
+        if self.test_mode:
+            limit, window = self.limits.get(endpoint_type, self.limits['default'])
+            return True, limit, window
+            
         now = time.time()
         requests = self.requests[ip][endpoint_type]
         
@@ -107,6 +113,11 @@ class RateLimiter:
             requests.popleft()
         
         return max(0, limit - len(requests))
+    
+    def reset(self):
+        """Reset the rate limiter state - useful for testing."""
+        self.requests.clear()
+        self.requests = defaultdict(lambda: defaultdict(lambda: deque()))
 
 # Initialize rate limiter
 rate_limiter = RateLimiter()
