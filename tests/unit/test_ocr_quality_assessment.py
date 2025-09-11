@@ -464,26 +464,26 @@ class TestOCRQualityAssessment:
         with patch('sqlite3.connect') as mock_connect:
             mock_conn = Mock()
             mock_cursor = Mock()
-            mock_cursor.execute.return_value.fetchall.return_value = [
-                (1, 1, "Test reason", 5, "test1.jpg", "test1.jpg")
-            ]
+            # Make fetchall return a real list, not a mock
+            items = [(1, 1, "Test reason", 5, "test1.jpg", "test1.jpg")]
+            mock_cursor.fetchall.return_value = items
             mock_conn.execute.return_value = mock_cursor
             mock_connect.return_value = mock_conn
             
-            # Make the second execute call raise an error
+            # Make the processing part raise an error, but allow error handling to work
             call_count = 0
             def side_effect(*args, **kwargs):
                 nonlocal call_count
                 call_count += 1
-                if call_count > 2:  # After the initial queries, raise error
+                # Allow the first few calls (SELECT queries and UPDATE status to processing)
+                # Then raise error on the processing part, but allow error handling UPDATE
+                if call_count == 3:  # The processing part
                     raise Exception("Processing error")
                 return mock_cursor
             
             mock_conn.execute.side_effect = side_effect
             
-            # Mock the len() function to work with Mock objects
-            with patch('builtins.len', return_value=1):
-                with patch('builtins.print') as mock_print:
-                    self.ocr_assessor.process_reprocessing_queue()
-                    # Should handle the error
-                    assert any("Error reprocessing" in str(call) for call in mock_print.call_args_list)
+            with patch('builtins.print') as mock_print:
+                self.ocr_assessor.process_reprocessing_queue()
+                # Should handle the error
+                assert any("Error reprocessing" in str(call) for call in mock_print.call_args_list)

@@ -241,9 +241,13 @@ class TestProcessReprocessingQueue:
     def test_main_environment_variable_loading(self):
         """Test main function loads environment variables"""
         with patch('sys.argv', ['process_reprocessing_queue.py', '--db', self.db_path]):
-            with patch('process_reprocessing_queue.load_dotenv') as mock_load_dotenv:
-                main()
-                mock_load_dotenv.assert_called_once()
+            with patch('dotenv.load_dotenv') as mock_load_dotenv:
+                # Import and run main to trigger the module-level load_dotenv call
+                import importlib
+                import process_reprocessing_queue
+                importlib.reload(process_reprocessing_queue)
+                process_reprocessing_queue.main()
+                mock_load_dotenv.assert_called()
     
     def test_main_dotenv_import_error(self):
         """Test main function handles dotenv import error"""

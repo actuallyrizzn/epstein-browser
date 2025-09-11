@@ -161,12 +161,13 @@ class TestLLMCorrectionProcessor:
     
     def test_get_ocr_text_error(self):
         """Test getting OCR text with error"""
-        with patch('builtins.open', side_effect=PermissionError("Permission denied")):
-            with patch('builtins.print') as mock_print:
-                result = self.processor.get_ocr_text("test/file.jpg")
-                assert result is None
-                # Should print error message
-                assert any("Error reading OCR text" in str(call) for call in mock_print.call_args_list)
+        with patch('os.path.exists', return_value=True):
+            with patch('builtins.open', side_effect=PermissionError("Permission denied")):
+                with patch('builtins.print') as mock_print:
+                    result = self.processor.get_ocr_text("test/file.jpg")
+                    assert result is None
+                    # Should print error message
+                    assert any("Error reading OCR text" in str(call) for call in mock_print.call_args_list)
     
     def test_process_image_no_ocr_text(self):
         """Test processing image with no OCR text"""
@@ -233,7 +234,7 @@ class TestLLMCorrectionProcessor:
         self.mock_ocr_assessor.correct_ocr_text.return_value = "Same text"
         self.mock_ocr_assessor.validate_correction_changes.return_value = False
         
-        with patch.object(self.processor, 'get_ocr_text', return_value="Same text"):
+        with patch.object(self.processor, 'get_ocr_text', return_value="This is a longer text that should pass the length check"):
             with patch('time.time', side_effect=[0, 1.0]):  # Mock processing time
                 with patch('builtins.print') as mock_print:
                     result = self.processor.process_image({
@@ -243,7 +244,8 @@ class TestLLMCorrectionProcessor:
                     })
                     assert result is False
                     # Check that the no changes message was printed
-                    assert any("No changes detected" in str(call) for call in mock_print.call_args_list)
+                    print_calls = [str(call) for call in mock_print.call_args_list]
+                    assert any("No changes detected" in call for call in print_calls)
     
     def test_process_image_rate_limit_error(self):
         """Test processing image with rate limit error"""

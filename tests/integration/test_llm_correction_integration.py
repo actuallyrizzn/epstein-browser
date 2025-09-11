@@ -17,6 +17,17 @@ sys.path.append(os.path.join(os.path.dirname(__file__), '..', '..'))
 
 from app import app
 
+# Mock the OCRQualityAssessment module to avoid import issues
+mock_ocr_module = Mock()
+mock_ocr_assessor = Mock()
+mock_ocr_assessor.get_correction.return_value = {
+    'corrected_text': 'Corrected legal document text',
+    'quality_score': 85,
+    'confidence': 'high'
+}
+mock_ocr_module.OCRQualityAssessment.return_value = mock_ocr_assessor
+sys.modules['helpers.ocr_quality_assessment'] = mock_ocr_module
+
 
 class TestLLMCorrectionIntegration:
     """Integration tests for LLM correction features"""
@@ -115,7 +126,8 @@ class TestLLMCorrectionIntegration:
             with patch('app.get_total_images', return_value=3):
                 with patch('app.get_db_connection') as mock_conn:
                     mock_cursor = Mock()
-                    mock_cursor.execute.return_value.fetchall.return_value = [
+                    # Set up the mock to return the list when fetchall() is called
+                    mock_cursor.fetchall.return_value = [
                         (1, 'test1.jpg'), (2, 'test2.jpg'), (3, 'test3.jpg')
                     ]
                     mock_conn.return_value.execute.return_value = mock_cursor
@@ -141,32 +153,24 @@ class TestLLMCorrectionIntegration:
             with patch('app.get_total_images', return_value=3):
                 with patch('app.get_db_connection') as mock_conn:
                     mock_cursor = Mock()
-                    mock_cursor.execute.return_value.fetchall.return_value = [
+                    # Set up the mock to return the list when fetchall() is called
+                    mock_cursor.fetchall.return_value = [
                         (1, 'test1.jpg'), (2, 'test2.jpg'), (3, 'test3.jpg')
                     ]
                     mock_conn.return_value.execute.return_value = mock_cursor
                     mock_conn.return_value.close = Mock()
                     
                     with patch('app.get_ocr_text', return_value="Original OCR text"):
-                        with patch('helpers.ocr_quality_assessment.OCRQualityAssessment') as mock_assessor_class:
-                            mock_assessor = Mock()
-                            mock_assessor.get_correction.return_value = {
-                                'corrected_text': 'Corrected legal document text',
-                                'quality_score': 85,
-                                'confidence': 'high'
-                            }
-                            mock_assessor_class.return_value = mock_assessor
-                            
-                            with patch('app.render_template') as mock_render:
-                                mock_render.return_value = "Rendered template"
-                                response = self.client.get('/view/2')
-                                assert response.status_code == 200
-                                # Verify render_template was called with correct variables
-                                mock_render.assert_called_once()
-                                call_args = mock_render.call_args[1]
-                                assert call_args['ocr_text'] == 'Corrected legal document text'
-                                assert call_args['ocr_corrected_text'] == 'Corrected legal document text'
-                                assert call_args['correction_confidence'] == 85
+                        with patch('app.render_template') as mock_render:
+                            mock_render.return_value = "Rendered template"
+                            response = self.client.get('/view/2')
+                            assert response.status_code == 200
+                            # Verify render_template was called with correct variables
+                            mock_render.assert_called_once()
+                            call_args = mock_render.call_args[1]
+                            assert call_args['ocr_text'] == 'Corrected legal document text'
+                            assert call_args['ocr_corrected_text'] == 'Corrected legal document text'
+                            assert call_args['correction_confidence'] == 85
     
     def test_view_image_correction_error(self):
         """Test viewing image with correction error"""
@@ -177,23 +181,25 @@ class TestLLMCorrectionIntegration:
             with patch('app.get_total_images', return_value=3):
                 with patch('app.get_db_connection') as mock_conn:
                     mock_cursor = Mock()
-                    mock_cursor.execute.return_value.fetchall.return_value = [
+                    # Set up the mock to return the list when fetchall() is called
+                    mock_cursor.fetchall.return_value = [
                         (1, 'test1.jpg'), (2, 'test2.jpg'), (3, 'test3.jpg')
                     ]
                     mock_conn.return_value.execute.return_value = mock_cursor
                     mock_conn.return_value.close = Mock()
                     
                     with patch('app.get_ocr_text', return_value="Original OCR text"):
-                        with patch('helpers.ocr_quality_assessment.OCRQualityAssessment', side_effect=Exception("OCR assessor error")):
-                            with patch('builtins.print') as mock_print:
-                                with patch('app.render_template') as mock_render:
-                                    mock_render.return_value = "Rendered template"
-                                    response = self.client.get('/view/2')
-                                    assert response.status_code == 200
-                                    # Verify fallback to original text
-                                    call_args = mock_render.call_args[1]
-                                    assert call_args['ocr_text'] == 'Original OCR text'
-                                    mock_print.assert_called_with("Error loading correction for image 2: OCR assessor error")
+                        # Mock the OCRQualityAssessment to raise an exception
+                        mock_ocr_assessor.get_correction.side_effect = Exception("OCR assessor error")
+                        with patch('builtins.print') as mock_print:
+                            with patch('app.render_template') as mock_render:
+                                mock_render.return_value = "Rendered template"
+                                response = self.client.get('/view/2')
+                                assert response.status_code == 200
+                                # Verify fallback to original text
+                                call_args = mock_render.call_args[1]
+                                assert call_args['ocr_text'] == 'Original OCR text'
+                                mock_print.assert_called_with("Error loading correction for image 2: OCR assessor error")
     
     def test_view_image_correction_not_found(self):
         """Test viewing image with correction not found"""
@@ -204,25 +210,24 @@ class TestLLMCorrectionIntegration:
             with patch('app.get_total_images', return_value=3):
                 with patch('app.get_db_connection') as mock_conn:
                     mock_cursor = Mock()
-                    mock_cursor.execute.return_value.fetchall.return_value = [
+                    # Set up the mock to return the list when fetchall() is called
+                    mock_cursor.fetchall.return_value = [
                         (1, 'test1.jpg'), (2, 'test2.jpg'), (3, 'test3.jpg')
                     ]
                     mock_conn.return_value.execute.return_value = mock_cursor
                     mock_conn.return_value.close = Mock()
                     
                     with patch('app.get_ocr_text', return_value="Original OCR text"):
-                        with patch('helpers.ocr_quality_assessment.OCRQualityAssessment') as mock_assessor_class:
-                            mock_assessor = Mock()
-                            mock_assessor.get_correction.return_value = None  # No correction found
-                            mock_assessor_class.return_value = mock_assessor
-                            
-                            with patch('app.render_template') as mock_render:
-                                mock_render.return_value = "Rendered template"
-                                response = self.client.get('/view/2')
-                                assert response.status_code == 200
-                                # Verify fallback to original text
-                                call_args = mock_render.call_args[1]
-                                assert call_args['ocr_text'] == 'Original OCR text'
+                        # Mock the OCRQualityAssessment to return None (no correction found)
+                        mock_ocr_assessor.get_correction.return_value = None
+                        
+                        with patch('app.render_template') as mock_render:
+                            mock_render.return_value = "Rendered template"
+                            response = self.client.get('/view/2')
+                            assert response.status_code == 200
+                            # Verify fallback to original text
+                            call_args = mock_render.call_args[1]
+                            assert call_args['ocr_text'] == 'Original OCR text'
     
     def test_view_image_no_ocr_text(self):
         """Test viewing image without OCR text"""
@@ -233,7 +238,8 @@ class TestLLMCorrectionIntegration:
             with patch('app.get_total_images', return_value=3):
                 with patch('app.get_db_connection') as mock_conn:
                     mock_cursor = Mock()
-                    mock_cursor.execute.return_value.fetchall.return_value = [
+                    # Set up the mock to return the list when fetchall() is called
+                    mock_cursor.fetchall.return_value = [
                         (1, 'test1.jpg'), (2, 'test2.jpg'), (3, 'test3.jpg')
                     ]
                     mock_conn.return_value.execute.return_value = mock_cursor

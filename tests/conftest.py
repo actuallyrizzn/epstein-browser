@@ -9,6 +9,7 @@ from pathlib import Path
 from unittest.mock import patch, MagicMock
 from flask import Flask
 import json
+from collections import defaultdict, deque
 
 # Import the app after setting up test environment
 os.environ['FLASK_ENV'] = 'testing'
@@ -93,9 +94,13 @@ def clean_rate_limiter():
         'default': (100, 60),  # 100 requests per 60 seconds
     }
     
-    rate_limiter.requests.clear()
+    # Completely reset the requests dictionary
+    rate_limiter.requests = defaultdict(lambda: defaultdict(lambda: deque()))
+    
     yield
-    rate_limiter.requests.clear()
+    
+    # Clean up after test
+    rate_limiter.requests = defaultdict(lambda: defaultdict(lambda: deque()))
     
     # Restore original limits
     rate_limiter.limits = original_limits
