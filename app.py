@@ -695,10 +695,20 @@ def view_image(image_id):
     correction_status = None
     
     if image['has_ocr_text']:
-        ocr_original_text = get_ocr_text(image['file_path'])
+        try:
+            ocr_original_text = get_ocr_text(image['file_path'])
+        except Exception as e:
+            app.logger.warning(f"Error loading OCR text for image {image_id}: {e}")
+            ocr_original_text = None
         
-        # Check for corrected text
-        if image.get('has_corrected_text'):
+        # Check for corrected text (only if the column exists)
+        # Use try/except to handle missing column gracefully
+        try:
+            has_corrected_text = image['has_corrected_text']
+        except (KeyError, IndexError):
+            has_corrected_text = False
+        
+        if has_corrected_text:
             try:
                 from helpers.ocr_quality_assessment import OCRQualityAssessment
                 ocr_assessor = OCRQualityAssessment('images.db')
@@ -714,7 +724,7 @@ def view_image(image_id):
                     # Fallback to original if correction not found
                     ocr_text = ocr_original_text
             except Exception as e:
-                print(f"Error loading correction for image {image_id}: {e}")
+                app.logger.warning(f"Error loading correction for image {image_id}: {e}")
                 ocr_text = ocr_original_text
         else:
             # No correction available, use original
@@ -728,14 +738,18 @@ def view_image(image_id):
     
     # Calculate the document number based on the filename (extract the number from DOJ-OGR-00000003.jpg)
     document_number = None
-    if image['file_name'].startswith('DOJ-OGR-'):
-        try:
-            # Extract the number from DOJ-OGR-00000003.jpg -> 3
-            number_part = image['file_name'].split('-')[2].split('.')[0]
-            document_number = int(number_part)
-        except (ValueError, IndexError):
+    try:
+        if image['file_name'].startswith('DOJ-OGR-'):
+            try:
+                # Extract the number from DOJ-OGR-00000003.jpg -> 3
+                number_part = image['file_name'].split('-')[2].split('.')[0]
+                document_number = int(number_part)
+            except (ValueError, IndexError):
+                document_number = current_position + 1  # Fallback to position
+        else:
             document_number = current_position + 1  # Fallback to position
-    else:
+    except Exception as e:
+        app.logger.warning(f"Error extracting document number for image {image_id}: {e}")
         document_number = current_position + 1  # Fallback to position
     
     return render_template('viewer.html',
