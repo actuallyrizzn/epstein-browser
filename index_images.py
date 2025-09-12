@@ -77,6 +77,29 @@ def migrate_database_schema():
         else:
             logger.debug("ocr_rescan_attempts column already exists")
         
+        # Create ocr_reprocessing_queue table if it doesn't exist
+        cursor.execute("""
+            SELECT name FROM sqlite_master 
+            WHERE type='table' AND name='ocr_reprocessing_queue'
+        """)
+        if not cursor.fetchone():
+            logger.info("Creating ocr_reprocessing_queue table")
+            cursor.execute("""
+                CREATE TABLE ocr_reprocessing_queue (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    image_id INTEGER NOT NULL,
+                    original_quality_score INTEGER,
+                    reprocess_reason TEXT,
+                    priority INTEGER DEFAULT 0,
+                    status TEXT DEFAULT 'queued',
+                    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                    processed_at TIMESTAMP,
+                    FOREIGN KEY (image_id) REFERENCES images (id) ON DELETE CASCADE
+                )
+            """)
+        else:
+            logger.debug("ocr_reprocessing_queue table already exists")
+        
         # Create indexes for new columns
         cursor.execute("CREATE INDEX IF NOT EXISTS idx_images_ocr_quality_score ON images(ocr_quality_score)")
         cursor.execute("CREATE INDEX IF NOT EXISTS idx_images_ocr_rescan_attempts ON images(ocr_rescan_attempts)")
